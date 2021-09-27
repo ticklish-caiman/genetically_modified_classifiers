@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <div class="simple">
+        <h1>{{ machine_info['cpu_name'] }}</h1>
+        <h1>
+            Cores: {{ machine_info['physical_cores'] }} physical, {{ machine_info['logical_cores'] }} logical
+        </h1>
+        <h1>
+            System memory: {{ machine_info['memory'] }}
+        </h1>
+    </div>
+    <div class="simple">
+        <h2>SAVED PIPELINES</h2>
+        <table class="dataframe mystyle" style="table-layout: fixed;">
+            <tr>
+                <th>Pipeline</th>
+                <th>Dataset</th>
+                <th>Classes</th>
+                <th>Objects</th>
+                <th>Attributes</th>
+                <th>CV</th>
+                <th>Tool</th>
+                <th>Random state</th>
+                <th>Score</th>
+            </tr>
+            {% for key, value in pipelines.items() %}
+                <tr>
+                    <td>
+                        {{ value['pipe_string'] }}
+                    </td>
+                    <td>
+                        {{ value['dataset_name'] }}
+                    </td>
+                    <td>
+                        {{ value['decision_classes'] }}
+                    </td>
+                    <td>
+                        {{ value['train_set_rows'] }}
+                    </td>
+                    <td>
+                        {{ value['train_set_attributes'] }}
+                    </td>
+
+                    <td>
+                        {{ value['cv'] }}
+                    </td>
+                    <td>
+                        {{ value['tool'] }}
+                    </td>
+                    <td>
+                        {{ value['random_state'] }}
+                    </td>
+                    <td>
+                        {{ value['score'] }}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+        <h2>SAVED PRESETS</h2>
+    Jesteś na: {{ self._TemplateReference__context.name }}
+    </div>
+{% endblock %}

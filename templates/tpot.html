@@ -1,0 +1,213 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="simple">
+        <h3>In advanced mode the hyperparameters will be obtained
+            automatically, but you can customize the way that will be achieved. </h3>
+        <h2>Free cores: {{ free_threads }}</h2>
+        <form action="/custom_tpot_run" method="POST">
+            <div class="row">
+                <div class="column">
+                    <select name=datasets method="GET" action="/" size="8">
+                        <option value="{{ state['dataset'] }}" selected>{{ state['dataset'] }}</option>
+                        {% for dataset in datasets %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['dataset'] != dataset %}
+                                <option value="{{ dataset }}">{{ dataset }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <div>Validation part: <span id="validation_size"></span>%</div>
+                    <input type="range" name="validation_size" style="width: auto"
+                           min="0" max="90" value="10"
+                           class="slider" id="validation_size_tpot"
+                           title="What percentage of dataset will be subtracted for validation test (that part won't be used in evolution process)">
+                </div>
+                <div class="column">
+                    <hr>
+                    <div style="text-align: right">
+                        Random state: <input type="number"
+                                             name="random_state"
+                                             style="width: 60px"
+                                             min="1"
+                                             max="100000"
+                                             value="13"
+                                             step="1"
+                                             class="slider"
+                                             title='Important for reproducibility.'><br/>
+                        <hr>
+                    </div>
+                    <input class="evo" type="submit" value="START EVOLUTION">
+                </div>
+
+
+                <div class="column" style="min-width: 600px">
+                    <h1>CUSTOMIZE PARAMETERS FOR TPOT</h1>
+                    <hr>
+                    <div class="slider_text"> Assign <span id="n_jobs"></span> logical cores</div>
+                    <input type="range" name="n_jobs"
+                           min="0" max="{{ free_threads }}"
+                           value="{{ free_threads }}"
+                           class="slider" id="n_jobs_tpot">
+                    <hr>
+                    <div class="slider_text">Population size (initial): <span id="pop_size"></span></div>
+                    <input type="range" name="pop_size"
+                           min="2" max="1000" value="20"
+                           class="slider" id="pop_size_tpot">
+                    <div class="slider_text">Offspring size: <span id="offspring_size"></span></div>
+                    <input type="range" name="offspring_size"
+                           min="2" max="1000" value="20"
+                           class="slider" id="offspring_tpot">
+                    <hr>
+                    <div class="slider_text"> Generations: <span id="gen_size"></span></div>
+                    <input type="range" name="gen_size"
+                           min="2" max="100000" value="10"
+                           class="slider" id="gen_size_tpot">
+                    <hr>
+                    <div class="slider_text">Cross-validation folds: <span id="cv"></span></div>
+                    <input type="range" name="cv"
+                           min="2" max="101" value="10"
+                           class="slider" id="cv_tpot"
+                           title='If LeaveOneOut is chosen maximum number of folds will be used (test_size - 1)'>
+                    <hr>
+
+                    <div class="slider_text">Cross-over chance: <span id="cross_chance"></span>%</div>
+                    <input type="range" name="cross_chance"
+                           min="0" max="100" value="10"
+                           class="slider" id="cross_chance_tpot"
+                           title='How likely it is for each evolving individual to be a product of cross-over.'>
+                    <hr>
+                    <div class="slider_text">Early stop: <span id="early_stop"></span></div>
+                    <input type="range" name="early_stop"
+                           min="0" max="100" value="50"
+                           class="slider" id="early_stop_tpot"
+                           title='After how many generations without improvement stop. Choose 0 to turn off.'>
+                    <div class="slider_text">Pipeline time limit: <span id="pipe_time"></span> minutes</div>
+                    <input type="range" name="pipe_time"
+                           min="1" max="300" value="10"
+                           class="slider" id="pipe_time_tpot"
+                           title='Global time limit will be determined automatically'>
+                    <hr>
+                    <div class="slider_text">Mutation chance: <span id="mutation"></span>%</div>
+                    <input type="range" name="mutation"
+                           min="0" max="100" value="90"
+                           class="slider" id="mutation_tpot"
+                           title='How likely it its for individual to mutate. Also determines chances for each parameter to mutate if the individual was selected for mutation'>
+                </div>
+            </div>
+        </form>
+
+    </div>
+
+
+
+
+    {% include "status.html" %}
+
+    <div class="simple" style="display: flex;">
+        <form action="/stop_gmc" method="GET">
+            <input type="submit" value="Stop GMC">
+        </form>
+        <form action="/stop_tpot" method="GET">
+            <input type="submit" value="Stop TPOT">
+        </form>
+        <form action="/cls" method="GET">
+            <input type="submit" value="Clear GMC console">
+        </form>
+        <form action="/cls_tpot" method="GET">
+            <input type="submit" value="Clear TPOT console">
+        </form>
+
+        <script>
+            let slider3b = document.getElementById("offspring_tpot");
+            let output3b = document.getElementById("offspring_size");
+            output3b.innerHTML = slider3b.value;
+
+            slider3b.oninput = function () {
+                output3b.innerHTML = this.value;
+            }
+
+            let slider10 = document.getElementById("validation_size_tpot");
+            let output10 = document.getElementById("validation_size");
+            output10.innerHTML = slider10.value;
+
+            slider10.oninput = function () {
+                output10.innerHTML = this.value;
+            }
+
+            let slider = document.getElementById("n_jobs_tpot");
+            let output = document.getElementById("n_jobs");
+            output.innerHTML = slider.value;
+
+            slider.oninput = function () {
+                output.innerHTML = this.value;
+            }
+
+            let slider2 = document.getElementById("pop_size_tpot");
+            let output2 = document.getElementById("pop_size");
+            output2.innerHTML = slider2.value;
+
+            slider2.oninput = function () {
+                output2.innerHTML = this.value;
+            }
+
+            let slider3 = document.getElementById("gen_size_tpot");
+            let output3 = document.getElementById("gen_size");
+            output3.innerHTML = slider3.value;
+
+            slider3.oninput = function () {
+                output3.innerHTML = this.value;
+            }
+
+
+            let slider4 = document.getElementById("cv_tpot");
+            let output4 = document.getElementById("cv");
+            output4.innerHTML = slider4.value;
+
+            slider4.oninput = function () {
+                if (this.value == 101) {
+                    output4.innerHTML = 'LeaveOneOut';
+                } else {
+                    output4.innerHTML = this.value;
+                }
+            }
+
+            let slider5 = document.getElementById("early_stop_tpot");
+            let output5 = document.getElementById("early_stop");
+            output5.innerHTML = slider5.value;
+
+            slider5.oninput = function () {
+                if (this.value == 0) {
+                    output5.innerHTML = 'Off';
+                } else {
+                    output5.innerHTML = this.value;
+                }
+            }
+
+            var slider6 = document.getElementById("cross_chance_tpot");
+            var output6 = document.getElementById("cross_chance");
+            output6.innerHTML = slider6.value;
+
+            slider6.oninput = function () {
+                output6.innerHTML = this.value;
+            }
+
+            var slider8 = document.getElementById("mutation_tpot");
+            var output8 = document.getElementById("mutation");
+            output8.innerHTML = slider8.value;
+
+            slider8.oninput = function () {
+                output8.innerHTML = this.value;
+            }
+
+            var slider12 = document.getElementById("pipe_time_tpot");
+            var output12 = document.getElementById("pipe_time");
+            output12.innerHTML = slider12.value;
+
+            slider12.oninput = function () {
+                output12.innerHTML = this.value;
+            }
+
+
+        </script>
+    </div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <div class="test">
+        <form action="/add_pipeline" method="POST">
+            <div class="row">
+                <div class="column">
+                    <h2>PICK A PIPELINE TO TEST</h2>
+                    <select name=pipelines method="GET" action="/" size="6" style="font-size: medium">
+                        <option value="{{ state['pipeline'] }}" selected>{{ state['pipeline'] }}</option>
+                        {% for pipeline in pipelines %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['pipeline'] != pipeline %}
+                                <option value="{{ pipeline }}">{{ pipeline }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <input class="evo" type="submit" value="⇩ ADD SELECTED PIPELINE ⇩" style="width: 555px; float: left">
+        </form>
+        <form action="/remove_pipeline" method="POST">
+            <input class="evo" type="submit" value="⇪ REMOVE SELECTED PIPELINE ⇪" style="width: 555px; float: right">
+            </br></br>
+            <div class="row">
+                <div class="column">
+                    <h2>READY TO TEST</h2>
+                    <select name=test_pipelines method="GET" action="/" size="6" style="font-size: medium">
+                        <option value="{{ state['test_pipeline'] }}" selected>{{ state['test_pipeline'] }}</option>
+                        {% for test_pipeline in test_pipelines %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['test_pipeline'] != test_pipeline %}
+                                <option value="{{ test_pipeline }}">{{ test_pipeline }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="column">
+                    <select name=datasets method="GET" action="/" size="4">
+                        <option value="{{ state['dataset'] }}" selected>{{ state['dataset'] }}</option>
+                        {% for dataset in datasets %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['dataset'] != dataset %}
+                                <option value="{{ dataset }}">{{ dataset }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+        <form action="/test_pipelines" method="POST">
+            <div class="row">
+                <div class="column" style="min-width: 600px">
+                    <h1>TEST PARAMETERS</h1>
+                    <hr>
+                    <div class="slider_text"> Assign <span id="n_jobs"></span> logical cores</div>
+                    <input type="range" name="n_jobs"
+                           min="0" max="{{ free_threads }}"
+                           value="{{ free_threads }}"
+                           class="slider" id="n_jobs_test">
+                    <hr>
+                    <div class="slider_text">Cross-validation folds: <span id="cv"></span></div>
+                    <input type="range" name="cv"
+                           min="2" max="101" value="10"
+                           class="slider" id="cv_test"
+                           title='If LeaveOneOut is chosen maximum number of folds will be used (test_size - 1)'>
+                    <hr>
+                    Random state: <input type="number"
+                                         name="random_state"
+                                         style="width: 60px"
+                                         min="1"
+                                         max="100000"
+                                         value="13"
+                                         step="1"
+                                         class="slider"
+                                         title='Important for reproducibility.'><br/>
+                    <hr>
+                    Show ROC: <label class="tip" type="checkbox"
+                                     title='ROC Curve'></label>
+                    {#   value="True" -> otherwise input will return 'on' instead od True             #}
+                    <input name="show_roc" type="checkbox" value="True"
+                           {% if state['adjust'] %}checked{% endif %}>
+                    <hr>
+                    Show AUC: <label class="tip" type="checkbox"
+                                     title='AUC Curve'></label>
+                    <input name="show_auc" type="checkbox" value="True"
+                           {% if state['adjust'] %}checked{% endif %}>
+                    t-TEST: <label class="tip" type="checkbox"
+                                   title="Apply Student's test"></label>
+                    <input name="show_auc" type="checkbox" value="True"
+                           {% if state['adjust'] %}checked{% endif %}>
+                    <input class="evo" type="submit" value="⇩ TEST PIPELINES ⇩"
+                           style="width: 555px; float: left">
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    {% include "status_tests.html" %}
+
+    <script>
+
+        let slider = document.getElementById("n_jobs_test");
+        let output = document.getElementById("n_jobs");
+        output.innerHTML = slider.value;
+
+        slider.oninput = function () {
+            output.innerHTML = this.value;
+        }
+
+        let slider4 = document.getElementById("cv_test");
+        let output4 = document.getElementById("cv");
+        output4.innerHTML = slider4.value;
+
+        slider4.oninput = function () {
+            if (this.value == 101) {
+                output4.innerHTML = 'LeaveOneOut';
+            } else {
+                output4.innerHTML = this.value;
+            }
+        }
+
+    </script>
+
+{% endblock %}
+

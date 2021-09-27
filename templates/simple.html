@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="simple">
+        <form action="/simple_evolve" method="POST">
+            <div class="row">
+                <div class="column">
+                    <select name=datasets method="GET" action="/" size="6">
+                        <option value="{{ state['dataset'] }}" selected>{{ state['dataset'] }}</option>
+                        {% for dataset in datasets %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['dataset'] != dataset %}
+                                <option value="{{ dataset }}">{{ dataset }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="column">
+                    <h3>{{ cores }} logical cores available.<br/>
+                        Select dataset from list on the left
+                        <br/>Use slider below to split them between methods</h3>
+                    <h1>GMC<input type="range" name="cores_balance"
+                                   min={{ cores/-2 }} max={{ cores/2 }} value="0"
+                                   class="slider2" id="power_of_gmc">TPOT</h1>
+                    <input class="evo" type="submit" value="Evolve">
+                </div>
+                <h3>Running both methods at once may have negative effect on performance. It is recommended to run each
+                    method separately on all cores.</h3>
+                <br/><br/>
+            </div>
+        </form>
+    </div>
+
+    {% include "status.html" %}
+
+    <div class="simple" style="display: flex;">
+        <form action="/stop_gmc" method="GET">
+            <input type="submit" value="Stop GMC">
+        </form>
+        <form action="/stop_tpot" method="GET">
+            <input type="submit" value="Stop TPOT">
+        </form>
+        <form action="/cls" method="GET">
+            <input type="submit" value="Clear GMC console">
+        </form>
+        <form action="/cls_tpot" method="GET">
+            <input type="submit" value="Clear TPOT console">
+        </form>
+    </div>
+
+{% endblock %}

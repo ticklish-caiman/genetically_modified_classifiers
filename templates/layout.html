@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Genetically Modified Classifiers</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+
+<body>
+<header>
+    <h1 class="logo">genetically_modified_classifiers</h1>
+    <strong>
+        <ul class="menu">
+            <li><a href="{{ url_for('summary') }}"
+                   {% if self._TemplateReference__context.name == 'summary.html' %}class="chosen"{% endif %}>Summary</a>
+            </li>
+            <li><a href="{{ url_for('simple') }}"
+                   {% if self._TemplateReference__context.name == 'simple.html' %}class="chosen"{% endif %}>Simple
+                mode</a></li>
+            <li><a href="{{ url_for('gmc') }}"
+                   {% if self._TemplateReference__context.name == 'gmc.html' %}class="chosen"{% endif %}>GMC</a>
+            </li>
+            <li><a href="{{ url_for('tpot') }}"
+                   {% if self._TemplateReference__context.name == 'tpot.html' %}class="chosen"{% endif %}>TPOT</a>
+            </li>
+            <li><a href="{{ url_for('data_explorer') }}"
+                   {% if self._TemplateReference__context.name == 'data_explorer.html' %}class="chosen"{% endif %}>Data
+                explorer</a></li>
+            <li><a href="{{ url_for('test') }}"
+                   {% if self._TemplateReference__context.name == 'test.html' %}class="chosen"{% endif %}>Tests</a></li>
+
+        </ul>
+    </strong>
+</header>
+{% block content %}
+{% endblock %}
+</body>
+</html>

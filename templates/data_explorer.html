@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="simple">
+        <h1>DATA EXPLORER</h1>
+        <p>Select dataset and task.</p>
+        <form action="/show_data" method="POST">
+            <div class="row">
+                <div class="column">
+                    <select name=datasets method="GET" action="/" size="7">
+                        <option value="{{ state['dataset'] }}" selected>{{ state['dataset'] }}</option>
+                        {% for dataset in datasets %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['dataset'] != dataset %}
+                                <option value="{{ dataset }}">{{ dataset }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="column" style="min-width: 800px">
+                    Adjust data: 
+                    <label class="switch" type="checkbox"
+                           title='Make sure data is free of NaN values and contains column named "class" - if not last column will be treated as decision class attribute'>
+                        {#   value="True" -> otherwise input will return 'on' instead od True             #}
+                        <input name="adjust" type="checkbox" value="True" {% if state['adjust'] %}checked{% endif %}>
+                    </label><br/><br/>
+                    Row limit: <span id="rows_number"></span><br/>
+                    <input type="range" name="rows_n" min="1" max="10000" value="{{ state['rows_option'] }}"
+                           class="slider" id="number_of_rows"><br/>
+
+
+                    Column limit: <span id="columns_number"></span><br/>
+                    <input type="range" name="columns_n" min="5" max="100" value="{{ state['columns_option'] }}"
+                           step="1"
+                           class="slider" id="number_of_columns">
+
+                    <br/><br/>
+                    <input type="submit" value="Display data">
+                </div>
+            </div>
+        </form>
+
+    </div>
+    </div>
+    <div class="simple">
+        ROWS: <br/>
+        COLUMNS: <br/>
+        CLASSES: <br/>
+        {{ dataset_table|safe }}
+    </div>
+    <script>
+        var slider = document.getElementById("number_of_rows");
+        var output = document.getElementById("rows_number");
+        output.innerHTML = slider.value;
+
+        slider.oninput = function () {
+            output.innerHTML = this.value;
+        }
+    </script>
+    <script>
+        var slider2 = document.getElementById("number_of_columns");
+        var output2 = document.getElementById("columns_number");
+        output2.innerHTML = slider2.value;
+
+        slider2.oninput = function () {
+            output2.innerHTML = this.value;
+        }
+    </script>
+
+{% endblock %}

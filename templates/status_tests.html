@@ -1,0 +1,24 @@
+<script src="https://code.jquery.com/jquery-3.2.1.js"></script>
+<div id="status" class="simple">
+    <div class="row">
+        <div class="column">
+            <h1>TEST CONSOLE:</h1>
+            <div class="scrollable_status">
+                <h3>
+                    <div id="test_status">{{ test_status['status']|safe }}</div>
+                </h3>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+    setInterval(function () {
+        $("#test_status").load("/test_status")
+    }, 2000)
+</script>
+
+</div>

@@ -1,0 +1,426 @@
+header {
+    background: #7CB9E8;
+    height: 50px;
+    width: 100%;
+    opacity: .9;
+    margin: auto;
+    margin-top: 3px;
+    display: flex;
+    /*padding: 10px 10px 10px 10px;*/
+    /*-webkit-border-radius: 10px;*/
+    /*-moz-border-radius: 10px;*/
+    /*border-radius: 10px;*/
+    display: flex;
+    width: auto;
+    max-width: 1600px;
+
+    border: 5px outset #1C6EA4;
+    /*border-radius: 2px;*/
+    /*-webkit-box-shadow: 5px 5px 34px 5px #000000;*/
+    /*box-shadow: 5px 5px 34px 5px #000000;*/
+}
+
+body {
+    margin: auto;
+    max-width: 1600px;
+    padding: 0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #444;
+    /*display: flex;*/
+    /*flex-flow: row wrap;*/
+    /*flex-direction: initial;*/
+    /*flex-wrap: wrap;*/
+    background: rgb(204, 239, 255);
+}
+
+
+img {
+    border: 3px double #1C6EA4;
+    border-radius: 6px;
+    /* center progress plots */
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+}
+
+
+h1 {
+    font-size: 2.2em;
+    margin-top: 1px;
+    margin-left: 1px;
+    margin-bottom: 1px;
+    text-align: left;
+    letter-spacing: -1px;
+    opacity: 1;
+    font-family: Consolas;
+}
+
+h2 {
+    text-align: left;
+    margin: 1px;
+    padding-left: 10px;
+    color: #ffffff;
+    font: 30px Consolas;
+    background: -webkit-linear-gradient(bottom, #008ab6, #19c7ff);
+    /*letter-spacing: -1px;*/
+}
+
+h3 {
+    font-size: 1.2em;
+    font-weight: 100;
+    margin-top: 5px;
+    margin-left: 5px;
+    margin-bottom: 5px;
+    text-align: left;
+    letter-spacing: -1px;
+    color: #282828;
+}
+
+h4 {
+    font-size: 0.7em;
+    font-weight: 100;
+    margin-top: 2px;
+    margin-left: 5px;
+    text-align: left;
+    letter-spacing: -1px;
+    color: #999;
+}
+
+div.info {
+    margin-top: 10px;
+    padding: 10px 10px 10px 10px;
+    /*background-color: #a6d4f8;*/
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    border-radius: 10px;
+    /*display: flex;*/
+    -webkit-box-shadow: 5px 5px 5px 0px #000000, inset 4px 4px 15px 0px #000000, 9px 4px 26px 1px rgba(0, 0, 0, 0);
+    box-shadow: 5px 5px 5px 0px #000000, inset 4px 4px 15px 0px #000000, 9px 4px 26px 1px rgba(0, 0, 0, 0);
+}
+
+div.test {
+    margin-top: 10px;
+    padding: 10px 10px 10px 10px;
+    /*background-color: #a6d4f8;*/
+    border: 3px outset #1C6EA4;
+    /*-webkit-border-radius: 10px;*/
+    /*-moz-border-radius: 10px;*/
+    /*border-radius: 19px;*/
+    background-color: #a6d4f8;
+    /*display: flex;*/
+}
+
+div.test input {
+    font-size: 150%;
+    margin-left: 2px;
+    alignment: right;
+}
+
+div.simple {
+    margin-top: 10px;
+    padding: 10px 10px 10px 10px;
+    /*background-color: #a6d4f8;*/
+    border: 3px outset #1C6EA4;
+    /*-webkit-border-radius: 10px;*/
+    /*-moz-border-radius: 10px;*/
+    /*border-radius: 19px;*/
+    background-color: #a6d4f8;
+    /*display: flex;*/
+}
+
+div.simple select {
+    font-size: 150%;
+    margin-bottom: 10px;
+    margin-right: 10px;
+}
+
+div.simple input {
+    font-size: 150%;
+    margin-left: 2px;
+    alignment: right;
+}
+
+div.simple input.evo {
+    font-size: 200%;
+    font-weight: bolder;
+    /*margin-left: 5%;*/
+    display: block;
+    alignment: center;
+}
+
+bold {
+    font-weight: bold !important;
+}
+
+
+header h1.logo {
+    margin: 5px;
+    font-size: 2.1em;
+    letter-spacing: -5px;
+    color: rgba(0, 0, 0, 0.75);
+    float: left;
+}
+
+header h1.logo:hover {
+    color: #073400;
+    font-family: "Arial Narrow";
+    font-size: 2.151em;
+    letter-spacing: 0px;
+}
+
+progress_barr {
+    font-size: 1.2em;
+    letter-spacing: -1px;
+}
+
+.menu {
+    float: right;
+    position: absolute;
+    margin-top: 1%;
+    margin-right: 1%;
+    /*display: flex;*/
+}
+
+.menu li {
+    display: inline;
+}
+
+.menu li + li {
+    margin-left: 15px;
+}
+
+
+.menu li a {
+    font-family: "Perpetua Titling MT";
+    color: #444;
+    text-decoration: none;
+    font-size: 1.1em;
+    letter-spacing: -1px;
+    text-decoration: overline solid black;
+    /*display: block;*/
+}
+
+
+.menu li a:hover {
+    text-decoration: underline solid black;
+    margin-top: auto;
+    text-shadow: 0 0 5px #FFF, 0 0 10px #FFF, 0 0 15px #FFF, 0 0 20px #49ff18, 0 0 30px #49FF18, 2px 2px 2px rgba(206, 89, 55, 0);
+    color: #000000;
+
+}
+
+
+.menu li a.chosen {
+    color: #444;
+    /*font-weight: bolder;*/
+    text-decoration: underline solid black;
+    margin-top: auto;
+    text-shadow: 0 0 5px #FFF, 0 0 10px #FFF, 0 0 15px #FFF, 0 0 20px #49ff18, 0 0 30px #49FF18, 2px 2px 2px rgba(206, 89, 55, 0);
+    color: #164600;
+}
+
+.menu li a.chosen:hover {
+    color: #004212;
+    /*font-weight: bolder;*/
+    text-decoration: underline solid black;
+    margin-top: auto;
+}
+
+/* horizontal scroll for tables */
+table {
+    display: block;
+    overflow-x: auto;
+    /*white-space: nowrap;*/
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+
+table td {
+    border: solid 2px rgb(133, 142, 255);
+    /*width: 100px;*/
+    word-wrap: break-word;
+}
+
+
+.mystyle {
+    font-size: 11pt;
+    border: 0px;
+}
+
+/* Styles for pandas dataframes */
+.mystyle td, th {
+    padding: 5px;
+}
+
+.mystyle tr:nth-child(even) {
+    background: #E0E0E0;
+}
+
+.mystyle tr:nth-child(odd) {
+    background: #e5f8c6;
+}
+
+
+.mystyle tr:hover {
+    background: rgba(170, 255, 0, 0.63);
+    cursor: pointer;
+}
+
+/* make checkboxes bigger */
+input[type=checkbox] {
+    transform: scale(1.8);
+}
+
+
+/*SLIDER from w3schools */
+.slidecontainer {
+    width: 100%; /* Width of the outside container */
+}
+
+date {
+    font-family: "Arial Narrow";
+    letter-spacing: -2px;
+    color: #818181;
+}
+
+
+/* The slider itself */
+.slider {
+    -webkit-appearance: none; /* Override default CSS styles */
+    appearance: none;
+    width: 100%; /* Full-width */
+    height: 20px; /* Specified height */
+    background: #d3d3d3; /* Grey background */
+    outline: none; /* Remove outline */
+    opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+    -webkit-transition: .5s; /* 0.2 seconds transition on hover */
+    transition: opacity .5s;
+}
+
+
+/* Mouse-over effects */
+.slider:hover {
+    opacity: 1; /* Fully shown on mouse-over */
+}
+
+/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default look */
+    appearance: none;
+    width: 25px; /* Set a specific slider handle width */
+    height: 19px; /* Slider handle height */
+    background: #4b8a00; /* Green background */
+    cursor: pointer; /* Cursor on hover */
+}
+
+.slider::-moz-range-thumb {
+    width: 25px; /* Set a specific slider handle width */
+    height: 19px; /* Slider handle height */
+    background: #4b8a00; /* Green background */
+    cursor: pointer; /* Cursor on hover */
+}
+
+.slider_text {
+    text-align: center;
+    padding-top: 0%;
+    padding-bottom: 0%;
+}
+
+.slider2 {
+    -webkit-appearance: none; /* Override default CSS styles */
+    appearance: none;
+    height: 20px; /* Specified height */
+    background: #d3d3d3; /* Grey background */
+    outline: none; /* Remove outline */
+    opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+    -webkit-transition: .5s; /* 0.2 seconds transition on hover */
+    transition: opacity .5s;
+}
+
+.slider2::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default look */
+    appearance: none;
+    width: 25px; /* Set a specific slider handle width */
+    height: 19px; /* Slider handle height */
+    background: #4b8a00; /* Green background */
+    cursor: pointer; /* Cursor on hover */
+}
+
+hr {
+    border-top: 1px solid #000000;
+    margin-top: 5px;
+}
+
+.scrollable_status {
+    height: 100px;
+    display: flex;
+    flex-direction: column-reverse;
+    border: 2px ridge #000000;
+    /*border-radius: 7px;*/
+    overflow-y: scroll;
+    height: 200px;
+    width: auto;
+
+}
+
+
+span {
+    text-align: center;
+}
+
+/* Making status scrollbar invisible */
+.scrollable_status::-webkit-scrollbar {
+    background: transparent; /* Optional: just make scrollbar invisible */
+}
+
+
+.status {
+    display: flex;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+
+}
+
+
+.test select {
+    min-width: 600px;
+    max-width: 100%;
+    max-height: 400px;
+}
+
+.test option {
+    /* wrap text in compatible browsers */
+    -moz-white-space: pre-wrap;
+    -o-white-space: pre-wrap;
+    white-space: pre-wrap;
+    /* hide text that can't wrap with an ellipsis */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* add border after every option */
+    border-bottom: 1px solid #DDD;
+}
+
+/* w3s */
+
+.row {
+    /* without flex status will have one column */
+    border: 1px outset #1C6EA4;
+    padding-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+/* Create two equal columns that sits next to each other */
+.column {
+    /*flex: 50%;*/
+
+    /*padding: 3px;*/
+    margin-left: 10px;
+    /*height: 300px; !* Should be removed. Only for demonstration *!*/
+}
+
+input.number {
+    padding-left: 20px;
+}
