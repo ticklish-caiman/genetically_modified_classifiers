@@ -80,7 +80,10 @@ def main():
         state = {'dataset': selected_dataset, 'rows_option': rows_option, 'columns_option': columns_option,
                  'adjust': adjusted}
         return render_template('data_explorer.html', datasets=gmc_interface.datasets,
-                               state=state, dataset_table=global_control.cached_data)
+                               state=state, dataset_table=global_control.cached_data,
+                               rows=global_control.last_selections['rows'],
+                               columns=global_control.last_selections['columns'],
+                               classes=global_control.last_selections['classes'])
 
     @app.route('/test')
     def test():
@@ -105,7 +108,7 @@ def main():
                                test_status=global_control.TEST_STATUS)
 
     ''' =========================================================================================================
-                                    DISPLAY AND WORK FUNCTIONS
+                                    DISPLAY AND TASK FUNCTIONS
         ========================================================================================================= '''
 
     @app.route('/show_data', methods=["GET", "POST"])
@@ -123,6 +126,7 @@ def main():
             global_control.last_selections['rows_option'] = rows_option
             global_control.last_selections['columns_option'] = columns_option
             global_control.last_selections['adjust'] = adjusting
+
             global_control.cached_data = gmc_interface.get_csv_data(request.form.get('datasets'),
                                                                     request.form.get('rows_n'),
                                                                     request.form.get('columns_n'),
@@ -134,8 +138,6 @@ def main():
         if request.method == "GET" or request.method == "POST":
             selected_dataset = request.form['datasets']
             core_balance = request.form["cores_balance"]
-            print('Przechwycony wybrany zbiór:', selected_dataset)
-            print('Przechwycony podział:', core_balance)
             state = {'dataset': selected_dataset}
             return render_template("simple.html", datasets=gmc_interface.datasets,
                                    selection=gmc_interface.start_evolution_simple(request.form.get('datasets'),
@@ -230,7 +232,7 @@ def main():
     @app.route('/test_pipelines', methods=["GET", "POST"])
     def test_pipelines():
         if request.method == "GET" or request.method == "POST":
-            gmc_interface.test_pipelines(global_control.TEST_PIPELINES, 'monks2.csv')
+            gmc_interface.test_pipelines(global_control.TEST_PIPELINES, 'biodeg.csv')
 
             return redirect('/test')
 

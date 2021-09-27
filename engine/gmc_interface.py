@@ -35,8 +35,13 @@ def get_csv_data(file, row_limit, column_limit, adjust):
     except FileNotFoundError:
         return '<h1>Please select file_name to analyze.</h1>'
 
+    global_control.last_selections['rows'] = dataset.shape[0]
+    global_control.last_selections['columns'] = dataset.shape[1]
+    global_control.last_selections['classes'] = 'Adjust data to determine the decision attribute.'
+
     if adjust:
         dataset = utils.adjust_dataset(dataset)
+        global_control.last_selections['classes'] = len(np.unique(dataset['class']))
 
     data = dataset.head(row_limit)
 
@@ -76,7 +81,7 @@ def run_evolve(x_train, y_train, n_jobs, file_name, population=30, generations=5
         pop_with_all = pop.unpack_history(pop1)
         save_results_gmc(pop_with_all, best.pipeline, subfolder_name)
         save_genome(best.genome, subfolder_name)
-    print('Koniec ewolucji GMC')
+    log.info('GMC finished')
 
     return pop1
 
@@ -96,8 +101,6 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
     x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=validation_size,
                                                         random_state=random_state)
 
-    print(f'Tajp {type(population)=}')
-    print(f'w run evolve custom{elitism=}')
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population for {file_name}'
     global_control.status['best_score'] = 0.0
@@ -129,19 +132,19 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
     print(running_threads)
     if isinstance(validation_size, int):
         validation_size = validation_size / 100
-    print(f'{validation_size=}')
+    log.info(f'{validation_size=}')
 
     if isinstance(crossover_rate, int):
         crossover_rate = crossover_rate / 100
-    print(f'{mutation=}')
+    log.info(f'{mutation=}')
 
     if isinstance(mutation, int):
         mutation = mutation / 100
-    print(f'{mutation=}')
+    log.info(f'{mutation=}')
 
     if isinstance(mutation_power, int):
         mutation_power = mutation_power / 100
-    print(f'{mutation_power=}')
+    log.info(f'{mutation_power=}')
 
     if isinstance(cross_method, int):
         if cross_method == 0:
@@ -240,7 +243,6 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population for {file_name}'
     global_control.tpot_status['best_score'] = 0.0
     global_control.tpot.fit(x_train, y_train)
-    subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
 
     log.info('Tpot finished')
     global_control.machine_info['free_threads'] += n_jobs
@@ -476,4 +478,5 @@ def test_pipelines(pipelines: [], file_name: str):
             pip_string = [pip_string.replace("\n", "").replace("  ", "") for x in pip_string]
             if p[0] == pip_string[0]:
                 cv = cross_val_score(pipeline, x_train, y_train, cv=10, n_jobs=4, error_score="raise")
-                print(f'Kroswaliduję {cv=}')
+                print(f'Crossvalidation: {cv}')
+                print(f'AVG: {sum(cv) / len(cv)}')

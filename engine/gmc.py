@@ -510,7 +510,7 @@ def validate_tested_population(population: Population):
             log.error(f'Individual validation failed: {x.pipeline}')
     log.info(f'Average score of population:{average_score(population.individuals)}')
     if GUI:
-        global_control.status['status'] += f' {average_score(population.individuals)}'
+        global_control.status['status'] += f' | last average:{average_score(population.individuals)}'
     return tested_population_validated
 
 
@@ -2234,7 +2234,6 @@ def update_param_grid_identical_as_tpot(clf, param_grid):
         })
 
     if str(clf).__contains__('ExtraTreeClassifier'):
-
         param_grid.update({
             # 'extratreeclassifier__n_estimators': [100],
             'extratreeclassifier__criterion': ["gini", "entropy"],

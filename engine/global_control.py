@@ -81,7 +81,9 @@ def init_selections():
     last_selections = dict()
     last_selections['rows_option'] = 20
     last_selections['columns_option'] = 10
-    # last_selections = [None, None, None, None]
+    last_selections['rows'] = 'No data displayed.'
+    last_selections['columns'] = 'No data displayed.'
+    last_selections['classes'] = 'No data displayed.'
 
 
 from datetime import datetime

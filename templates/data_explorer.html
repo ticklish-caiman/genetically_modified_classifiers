@@ -1,8 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
     <div class="simple">
-        <h1>DATA EXPLORER</h1>
-        <p>Select dataset and task.</p>
+        <h2>DATA EXPLORER</h2>
         <form action="/show_data" method="POST">
             <div class="row">
                 <div class="column">
@@ -42,9 +41,10 @@
     </div>
     </div>
     <div class="simple">
-        ROWS: <br/>
-        COLUMNS: <br/>
-        CLASSES: <br/>
+        ROWS:{{ rows|safe }}<br/>
+        COLUMNS:{{ columns|safe }}<br/>
+        CLASSES:{{ classes|safe }}<br/>
+        <hr>
         {{ dataset_table|safe }}
     </div>
     <script>
