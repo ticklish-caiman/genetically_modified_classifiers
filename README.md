@@ -8,4 +8,4 @@ https://user-images.githubusercontent.com/91501936/135160452-1f2413b0-ed31-48e4-
 
 
 Tested on Windows 10 only. Some functions are 'hacky' and might not work on other systems.
-If you want the best possible performance - skip flask and directly call GMC.evolve() function.
+If you don't care about GUI and want the best possible performance - directly call gmc.evolve() function.
