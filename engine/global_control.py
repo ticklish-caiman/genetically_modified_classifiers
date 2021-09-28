@@ -64,6 +64,7 @@ def init_plots():
     global plots
     plots = dict()
     plots['test'] = []
+    plots['test_texts'] = []
 
 
 def init_cpu_history():

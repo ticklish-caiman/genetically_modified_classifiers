@@ -22,22 +22,6 @@
                            class="slider" id="validation_size_tpot"
                            title="What percentage of dataset will be subtracted for validation test (that part won't be used in evolution process)">
                 </div>
-                <div class="column">
-                    <hr>
-                    <div style="text-align: right">
-                        Random state: <input type="number"
-                                             name="random_state"
-                                             style="width: 60px"
-                                             min="1"
-                                             max="100000"
-                                             value="13"
-                                             step="1"
-                                             class="slider"
-                                             title='Important for reproducibility.'><br/>
-                        <hr>
-                    </div>
-                    <input class="evo" type="submit" value="START EVOLUTION">
-                </div>
 
 
                 <div class="column" style="min-width: 600px">
@@ -92,7 +76,24 @@
                            min="0" max="100" value="90"
                            class="slider" id="mutation_tpot"
                            title='How likely it its for individual to mutate. Also determines chances for each parameter to mutate if the individual was selected for mutation'>
+                    <hr>
+                    <div style="text-align: right">
+                        Random state: <input type="number"
+                                             name="random_state"
+                                             style="width: 60px"
+                                             min="1"
+                                             max="100000"
+                                             value="13"
+                                             step="1"
+                                             class="slider"
+                                             title='Important for reproducibility.'><br/>
+                        <hr>
+                    </div>
+                        <input class="evo" style="height: 80px; display: block; align-self: center" type="submit" value="START EVOLUTION">
+
                 </div>
+
+
             </div>
         </form>
 

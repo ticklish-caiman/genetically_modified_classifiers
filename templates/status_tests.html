@@ -5,15 +5,18 @@
             <h1>TEST CONSOLE:</h1>
             <div class="scrollable_status">
                 <h3>
-                    <div id="test_status">{{ test_status['status']|safe }}</div>
+                    <div id="test_status">{{ test_status|safe }}</div>
                 </h3>
             </div>
         </div>
     </div>
     <hr>
     <h2>ROC/AUC</h2>
-
+    <div onload="refresh()">
+    </div>
     {% for plot in plots %}
+        <hr>
+        <h3>{{ plots_text[loop.index0]|safe }}</h3>
         <img src="{{ plot|safe }}" style="max-width:90%"/>
     {% endfor %}
 
@@ -24,6 +27,12 @@
     setInterval(function () {
         $("#test_status").load("/test_status")
     }, 2000)
+
+    function refresh() {
+        setTimeout(function () {
+            location.reload();
+        }, 1000);
+    }
 </script>
 
 </div>

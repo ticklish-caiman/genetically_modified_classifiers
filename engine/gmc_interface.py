@@ -477,8 +477,7 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
     dataset = adjust_dataset(dataset)
     features = dataset.drop('class', axis=1).values
     x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=test_size,
-                                                        random_state=13)
-    cv_score = []
+                                                        random_state=int(random_state))
     for pipeline in global_control.PIPELINES:
         for p in pipelines:
             p = [p.replace("\r\n", "").replace("  ", "") for x in p]
@@ -494,6 +493,9 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Average: {sum(cv_score) / len(cv_score)}"
                 if show_roc:
                     generate_roc(cv, x_train, y_train, pipeline, file_name)
+
+    global_control.machine_info['free_threads'] += n_jobs
+    log.info('TEST finished')
 
 
 def generate_roc(cv, x_train, y_train, pipeline, file_name):
@@ -516,9 +518,8 @@ def generate_roc(cv, x_train, y_train, pipeline, file_name):
 
     fig.set_dpi(200.)
     # beware that some Figure's parameters are in inches
-    fig.set_figheight(9.4)
-    fig.set_figwidth(7.)
-
+    fig.set_figheight(6.)
+    fig.set_figwidth(8.2)
 
     for i, (train, test) in enumerate(cv.split(X, y)):
         classifier.fit(X[train], y[train])
@@ -536,15 +537,12 @@ def generate_roc(cv, x_train, y_train, pipeline, file_name):
         tprs.append(interp_tpr)
         aucs.append(viz.roc_auc)
 
-
     ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Chance", alpha=0.8)
 
     mean_tpr = np.mean(tprs, axis=0)
     mean_tpr[-1] = 1.0
     mean_auc = auc(mean_fpr, mean_tpr)
     std_auc = np.std(aucs)
-
-
 
     ax.plot(
         mean_fpr,
@@ -566,22 +564,13 @@ def generate_roc(cv, x_train, y_train, pipeline, file_name):
         label=r"$\pm$ 1 std. dev.",
     )
 
-    # title = ax.set_title(pipeline)
-
-    # fig.tight_layout()
-    # title.set_y(1.05)
-    # fig.subplots_adjust(top=0.8)
-
-    # ax.set(
-    #     title=f"{pipeline}"
-    # )
     # Shrink current axis
     box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height * 0.5])
+    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
     # Put a legend to the right of the current axis
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    plt.title({pipeline})
+    #                                           plt.title({pipeline})
     # Convert plot to PNG image
     pngImage = io.BytesIO()
     FigureCanvas(fig).print_png(pngImage)
@@ -590,6 +579,7 @@ def generate_roc(cv, x_train, y_train, pipeline, file_name):
     pngImageB64String = "data:image/png;base64,"
     pngImageB64String += base64.b64encode(pngImage.getvalue()).decode('utf8')
 
+    global_control.plots['test_texts'].append(str(pipeline))
     global_control.plots['test'].append(pngImageB64String)
 
     plt.show()
@@ -620,5 +610,3 @@ def start_test_thread(pipelines: [], file_name: str, n_jobs=1, cv=10, random_sta
             "%d.%m.%Y|%H-%M-%S") + ":</date> Not enough cores available."
         print(f'Saving thread for later: {global_control.tpot_thread=}')
         global_control.queue.append(global_control.tpot_thread)
-
-    log.info('TEST finished')

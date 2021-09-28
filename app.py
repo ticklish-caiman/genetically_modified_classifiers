@@ -114,7 +114,8 @@ def main():
         return render_template('test.html', datasets=gmc_interface.datasets, pipelines=global_control.PIPELINES,
                                test_pipelines=global_control.TEST_PIPELINES,
                                state=state, free_threads=global_control.machine_info['free_threads'],
-                               test_status=global_control.TEST_STATUS['status'], plots=global_control.plots['test'])
+                               test_status=global_control.TEST_STATUS['status'], plots=global_control.plots['test'],
+                               plots_text=global_control.plots['test_texts'])
 
     ''' =========================================================================================================
                                     DISPLAY AND TASK FUNCTIONS

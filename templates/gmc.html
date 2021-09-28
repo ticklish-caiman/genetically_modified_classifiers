@@ -4,7 +4,7 @@
         <form action="/custom_gmc_run" method="POST">
             <h3>In advanced mode the hyperparameters will be obtained
                 automatically, but you can customize the way that will be achieved. </h3>
-        <h2>Free cores: {{ free_threads }}</h2>
+            <h2>Free cores: {{ free_threads }}</h2>
             <div class="row">
                 <div class="column">
                     Select dataset<br/>
@@ -23,48 +23,9 @@
                            class="slider" id="validation_size_gmc"
                            title="What percentage of dataset will be subtracted for validation test (that part won't be used in evolution process)">
                 </div>
-                <div class="column">
-                    Select parameter grid<br/>
-                    <select name=grids method="GET" action="/" size="5">
-                        <option value="{{ state['grid'] }}" selected>{{ state['grid'] }}</option>
-                        {% for grid in grids %}
-                            {# add only if differante than passed state (to not duplicate) #}
-                            {% if state['grid'] != grid %}
-                                <option value="{{ grid }}">{{ grid }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select><br/>
-                    Preselection: <label class="tip" type="checkbox"
-                                         title='Each random configuration will be preselected using RandomGridSearchCV'></label>
-                    {#   value="True" -> otherwise input will return 'on' instead od True             #}
-                    <input name="preselection" type="checkbox" value="True"
-                           {% if state['adjust'] %}checked{% endif %}>
-                </div>
-                <div class="column">
-                    <hr>
-                    <div style="text-align: right">
-                        Allow fresh blood: <label class="tip" type="checkbox"
-                                                       title='Works with early stop - if algorithm will be close to stopping new individuals will be generated'></label>
-                        {#   value="True" -> otherwise input will return 'on' instead od True             #}
-                        <input name="fresh_blood" type="checkbox" value="True"
-                               {% if state['adjust'] %}checked{% endif %}>
-                        <hr>
-                        Random state: <input type="number"
-                                             name="random_state"
-                                             style="width: 60px"
-                                             min="1"
-                                             max="100000"
-                                             value="13"
-                                             step="1"
-                                             class="slider"
-                                             title='Important for reproducibility.'><br/>
-                        <hr>
-                    </div>
-                    <input class="evo" type="submit" value="START EVOLUTION" style="height: 80px">
-                    <hr>
-                </div>
+
                 <br/>
-            
+
                 <div class="column" style="min-width: 600px">
                     <h1>CUSTOMIZE PARAMETERS FOR GMC</h1>
                     <hr>
@@ -96,8 +57,6 @@
                            title='If LeaveOneOut is chosen maximum number of folds will be used (test_size - 1)'>
                     <hr>
 
-
-                    <hr>
                     <div class="slider_text">Cross-over chance: <span id="cross_chance"></span>%</div>
                     <input type="range" name="cross_chance"
                            min="0" max="100" value="100"
@@ -140,6 +99,48 @@
                            title='How likely it its for individual to mutate'>
 
 
+                </div>
+
+                <div class="column">
+                    Select parameter grid<br/>
+                    <select name=grids method="GET" action="/" size="5">
+                        <option value="{{ state['grid'] }}" selected>{{ state['grid'] }}</option>
+                        {% for grid in grids %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['grid'] != grid %}
+                                <option value="{{ grid }}">{{ grid }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select><br/>
+                    Preselection: <label class="tip" type="checkbox"
+                                         title='Each random configuration will be preselected using RandomGridSearchCV'></label>
+                    {#   value="True" -> otherwise input will return 'on' instead od True             #}
+                    <input name="preselection" type="checkbox" value="True"
+                           {% if state['adjust'] %}checked{% endif %}>
+
+                 <div class="column">
+                    <hr>
+                    <div style="text-align: right">
+                        Allow fresh blood: <label class="tip" type="checkbox"
+                                                  title='Works with early stop - if algorithm will be close to stopping new individuals will be generated'></label>
+                        {#   value="True" -> otherwise input will return 'on' instead od True             #}
+                        <input name="fresh_blood" type="checkbox" value="True"
+                               {% if state['adjust'] %}checked{% endif %}>
+                        <hr>
+                        Random state: <input type="number"
+                                             name="random_state"
+                                             style="width: 60px"
+                                             min="1"
+                                             max="100000"
+                                             value="13"
+                                             step="1"
+                                             class="slider"
+                                             title='Important for reproducibility.'><br/>
+                        <hr>
+                    </div>
+                    <input class="evo" type="submit" value="START EVOLUTION" style="height: 80px">
+                    <hr>
+                </div>
                 </div>
             </div>
         </form>
