@@ -37,19 +37,7 @@
                     </select>
                 </div>
             </div>
-            <div class="row">
-                <div class="column">
-                    <select name=datasets method="GET" action="/" size="4">
-                        <option value="{{ state['dataset'] }}" selected>{{ state['dataset'] }}</option>
-                        {% for dataset in datasets %}
-                            {# add only if differante than passed state (to not duplicate) #}
-                            {% if state['dataset'] != dataset %}
-                                <option value="{{ dataset }}">{{ dataset }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
+
         </form>
         <form action="/test_pipelines" method="POST">
             <div class="row">
@@ -78,22 +66,35 @@
                                          class="slider"
                                          title='Important for reproducibility.'><br/>
                     <hr>
-                    Show ROC: <label class="tip" type="checkbox"
+                    Show ROC/AUC: <label class="tip" type="checkbox"
                                      title='ROC Curve'></label>
                     {#   value="True" -> otherwise input will return 'on' instead od True             #}
                     <input name="show_roc" type="checkbox" value="True"
-                           {% if state['adjust'] %}checked{% endif %}>
-                    <hr>
-                    Show AUC: <label class="tip" type="checkbox"
-                                     title='AUC Curve'></label>
-                    <input name="show_auc" type="checkbox" value="True"
-                           {% if state['adjust'] %}checked{% endif %}>
+                           {% if state['show_roc'] %}checked{% endif %}>
                     t-TEST: <label class="tip" type="checkbox"
                                    title="Apply Student's test"></label>
-                    <input name="show_auc" type="checkbox" value="True"
-                           {% if state['adjust'] %}checked{% endif %}>
+                    <input name="t_test" type="checkbox" value="True"
+                           {% if state['t_test'] %}checked{% endif %}>
+                    <hr>
+                    <select name=datasets method="GET" action="/" size="4">
+                        <option value="{{ state['dataset'] }}" selected>{{ state['dataset'] }}</option>
+                        {% for dataset in datasets %}
+                            {# add only if differante than passed state (to not duplicate) #}
+                            {% if state['dataset'] != dataset %}
+                                <option value="{{ dataset }}">{{ dataset }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <hr>
+                    <div>Validation part: <span id="validation_size"></span>%</div>
+                    <input type="range" name="validation_size" style="width: auto"
+                           min="0" max="90" value="10"
+                           class="slider" id="validation_size_test"
+                           title="What percentage of dataset will be subtracted for validation test (that part won't be used in evolution process)">
+                    <hr>
                     <input class="evo" type="submit" value="⇩ TEST PIPELINES ⇩"
                            style="width: 555px; float: left">
+
                 </div>
             </div>
 
@@ -122,6 +123,14 @@
             } else {
                 output4.innerHTML = this.value;
             }
+        }
+
+        var slider10 = document.getElementById("validation_size_test");
+        var output10 = document.getElementById("validation_size");
+        output10.innerHTML = slider10.value;
+
+        slider10.oninput = function () {
+            output10.innerHTML = this.value;
         }
 
     </script>

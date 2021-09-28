@@ -115,10 +115,6 @@ def get_best_from_list(indv=[]):
     return best
 
 
-"""   plt.title('Tytul')
-    https://gitlab.com/-/snippets/1924163"""
-
-
 def average_score(individuals: []) -> float:
     return sum(i.score for i in individuals) / len(individuals)
 
@@ -141,7 +137,7 @@ def update_plot(population):
     fig.set_figwidth(6.4)
 
     axis = fig.add_subplot(1, 1, 1)
-    axis.set_title('GmC')
+    axis.set_title('G_M_C')
     axis.set_xlabel("Generation")
     axis.set_ylabel("Score")
     axis.grid()
@@ -150,16 +146,15 @@ def update_plot(population):
     axis.plot(series)
     fig.legend(['Best', 'Average'], loc='upper right',
                ncol=2, fancybox=True, shadow=True)
-
+    """  https://gitlab.com/-/snippets/1924163 """
     # Convert plot to PNG image
     pngImage = io.BytesIO()
     FigureCanvas(fig).print_png(pngImage)
     # Encode PNG image to base64 string
     pngImageB64String = "data:image/png;base64,"
     pngImageB64String += base64.b64encode(pngImage.getvalue()).decode('utf8')
-
     global_control.status['plot'] = pngImageB64String
-    # return series
+
     """
         For better performance we may track how many scores (one each generation) was captured, unfortunately with
             periodical refreshing we may skip some generations!
@@ -322,18 +317,12 @@ def update_status(status: str):
 def update_hall_of_fame(hall_of_fame: list, individuals: list, elitism: int):
     all_ind = hall_of_fame + individuals
     hall_of_fame = get_n_best(elitism, all_ind)
-    # print("       wsićko: ", [x.score for x in all_ind])
-    # print('--- osobniki hof: ', [x.score for x in hall_of_fame])
     return hall_of_fame
 
 
 def get_n_best(n: int, individuals: list):
-    # print('Nieposortowane osobniki: ', [x.score for x in individuals])
-    # TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
-    # jakim cudem?
-    # a no takim, że dodajemy fresh blood i nie testujemy
     individuals.sort(key=lambda x: x.score, reverse=True)
-    # print('Posortowane osobniki   : ', [x.score for x in individuals])
+
     bests = []
     for i in range(n):
         bests.append(individuals[i])
@@ -352,3 +341,9 @@ def keys(item):
 
 def values(item):
     return [i for i in item.__dict__.values()]
+
+def avgScore(scores):
+    suma = 0
+    for score in scores:
+        suma += score
+    return suma / len(scores)

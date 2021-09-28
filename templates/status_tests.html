@@ -9,11 +9,16 @@
                 </h3>
             </div>
         </div>
-
     </div>
+    <hr>
+    <h2>ROC/AUC</h2>
+
+    {% for plot in plots %}
+        <img src="{{ plot|safe }}" style="max-width:90%"/>
+    {% endfor %}
+
 
 </div>
-
 
 <script>
     setInterval(function () {

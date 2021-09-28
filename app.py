@@ -5,6 +5,15 @@ from flask import Flask, render_template, request, redirect
 from engine import gmc_interface as gmc_interface
 import global_control
 
+# Setting log to debug may cause printing logs from used liberties (e.g. matplotlib)
+log.basicConfig(level=log.DEBUG)
+log.getLogger(__name__).addHandler(log.StreamHandler)
+log.debug("this will get printed")
+log.info("this will get printed - info")
+log.warning("this will get printed - warning")
+log.error("this will get printed - error")
+log.critical("this will get printed - critical")
+
 
 def main():
     global_control.init_control()
@@ -17,7 +26,7 @@ def main():
         return {'gmc_status': global_control.status, 'tpot_status': global_control.tpot_status,
                 'dataset': global_control.cached_data, 'cpu': global_control.current_cpu_usage,
                 'memory': global_control.machine_info['memory_usage'], 'plots': global_control.plots,
-                'test_status': global_control.TEST_STATUS}
+                'test_status': global_control.TEST_STATUS['status']}
 
     @app.route('/')
     def summary():
@@ -105,7 +114,7 @@ def main():
         return render_template('test.html', datasets=gmc_interface.datasets, pipelines=global_control.PIPELINES,
                                test_pipelines=global_control.TEST_PIPELINES,
                                state=state, free_threads=global_control.machine_info['free_threads'],
-                               test_status=global_control.TEST_STATUS)
+                               test_status=global_control.TEST_STATUS['status'], plots=global_control.plots['test'])
 
     ''' =========================================================================================================
                                     DISPLAY AND TASK FUNCTIONS
@@ -232,7 +241,23 @@ def main():
     @app.route('/test_pipelines', methods=["GET", "POST"])
     def test_pipelines():
         if request.method == "GET" or request.method == "POST":
-            gmc_interface.test_pipelines(global_control.TEST_PIPELINES, 'biodeg.csv')
+            selected_dataset = request.form.get('datasets')
+            n_jobs = request.form.get('n_jobs')
+            cv = request.form.get('cv')
+            random_state = request.form.get('random_state')
+            global_control.last_selections['dataset'] = selected_dataset
+            try:
+                show_roc = request.form["show_roc"]
+            except KeyError:
+                show_roc = False
+            try:
+                t_test = request.form["t_test"]
+            except KeyError:
+                t_test = False
+            test_size = request.form.get('validation_size')
+
+            gmc_interface.start_test_thread(global_control.TEST_PIPELINES, selected_dataset, int(n_jobs), cv,
+                                            random_state, show_roc, t_test, test_size)
 
             return redirect('/test')
 
@@ -309,6 +334,10 @@ def main():
             "%d.%m.%Y|%H-%M-%S") + ':</date> Gentle stop requested. TPOT got 1 last minute to finish'
         global_control.stop_tpot = True
         return redirect(request.referrer)
+
+    @app.route('/test_status')
+    def test_status():
+        return global_control.TEST_STATUS['status']
 
     # host='0.0.0.0', port=5000, <- access in local network
     # app.config['TEMPLATES_AUTO_RELOAD'] = True

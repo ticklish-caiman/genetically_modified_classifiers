@@ -9,7 +9,6 @@ import io
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-
 global status
 global tpot_status
 global status_thread
@@ -64,6 +63,7 @@ def init_stop_tpot():
 def init_plots():
     global plots
     plots = dict()
+    plots['test'] = []
 
 
 def init_cpu_history():

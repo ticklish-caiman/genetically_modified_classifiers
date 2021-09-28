@@ -1,10 +1,17 @@
+import base64
+import io
 import os
 import pickle
 import time
+from itertools import cycle
+from textwrap import wrap
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split, LeaveOneOut, cross_val_score
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from sklearn.metrics import RocCurveDisplay, auc, roc_auc_score, roc_curve
+from sklearn.model_selection import train_test_split, LeaveOneOut, cross_val_score, StratifiedKFold, cross_val_predict
 from tpot import TPOTClassifier
 
 import engine.gmc as pop
@@ -254,18 +261,18 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
     running_threads = []
     for thread in threading.enumerate():
         running_threads.append(thread.name)
-    print(running_threads)
+    log.debug(running_threads)
     if isinstance(validation_size, int):
         validation_size = validation_size / 100
-    print(f'{validation_size=}')
+    log.info(f'{validation_size=}')
 
     if isinstance(crossover_rate, int):
         crossover_rate = crossover_rate / 100
-    print(f'{mutation=}')
+    log.info(f'{mutation=}')
 
     if isinstance(mutation, int):
         mutation = mutation / 100
-    print(f'{mutation=}')
+    log.info(f'{mutation=}')
 
     if cv == 101:
         cv = LeaveOneOut()
@@ -347,7 +354,7 @@ def run_tpot(file_name, x_train, y_train, n_jobs, cv, random_state):
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
     save_results_tpot(subfolder_name)
 
-    print('Koniec ewolucji tpot')
+    log.info('TPOT finished')
 
 
 def update_tpot_status():
@@ -461,22 +468,157 @@ def unpickle_pipelines():
     global_control.PIPELINES = filtered_pipes
 
 
-def test_pipelines(pipelines: [], file_name: str):
+def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=13, show_roc=True,
+                   t_test=True, test_size=0.1):
     try:
         dataset = pd.read_csv('data-CSV/' + file_name, delimiter=',')
     except FileNotFoundError:
         return '<h1>Please select file_name to analyze.</h1>'
     dataset = adjust_dataset(dataset)
     features = dataset.drop('class', axis=1).values
-    x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=0.1,
+    x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=test_size,
                                                         random_state=13)
-    cv = []
+    cv_score = []
     for pipeline in global_control.PIPELINES:
         for p in pipelines:
             p = [p.replace("\r\n", "").replace("  ", "") for x in p]
             pip_string = str(pipeline)
             pip_string = [pip_string.replace("\n", "").replace("  ", "") for x in pip_string]
             if p[0] == pip_string[0]:
-                cv = cross_val_score(pipeline, x_train, y_train, cv=10, n_jobs=4, error_score="raise")
-                print(f'Crossvalidation: {cv}')
-                print(f'AVG: {sum(cv) / len(cv)}')
+                global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+                    "%d.%m.%Y|%H-%M-%S") + f":</date> Testing: {pipeline}"
+                cv_score = cross_val_score(pipeline, x_train, y_train, cv=10, n_jobs=4, error_score="raise")
+                global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+                    "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-validation: {cv_score}"
+                global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+                    "%d.%m.%Y|%H-%M-%S") + f":</date> Average: {sum(cv_score) / len(cv_score)}"
+                if show_roc:
+                    generate_roc(cv, x_train, y_train, pipeline, file_name)
+
+
+def generate_roc(cv, x_train, y_train, pipeline, file_name):
+    global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Generating ROC/AUC..."
+    cv = int(cv)
+    X = x_train
+    y = y_train
+    X, y = X[y != 2], y[y != 2]
+
+    cv = StratifiedKFold(n_splits=cv)
+    classifier = pipeline
+
+    tprs = []
+    aucs = []
+    mean_fpr = np.linspace(0, 1, 100)
+
+    fig, ax = plt.subplots()
+    plt.tick_params(labelsize=10)
+
+    fig.set_dpi(200.)
+    # beware that some Figure's parameters are in inches
+    fig.set_figheight(9.4)
+    fig.set_figwidth(7.)
+
+
+    for i, (train, test) in enumerate(cv.split(X, y)):
+        classifier.fit(X[train], y[train])
+        viz = RocCurveDisplay.from_estimator(
+            classifier,
+            X[test],
+            y[test],
+            name="ROC fold {}".format(i),
+            alpha=0.3,
+            lw=1,
+            ax=ax,
+        )
+        interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+        interp_tpr[0] = 0.0
+        tprs.append(interp_tpr)
+        aucs.append(viz.roc_auc)
+
+
+    ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Chance", alpha=0.8)
+
+    mean_tpr = np.mean(tprs, axis=0)
+    mean_tpr[-1] = 1.0
+    mean_auc = auc(mean_fpr, mean_tpr)
+    std_auc = np.std(aucs)
+
+
+
+    ax.plot(
+        mean_fpr,
+        mean_tpr,
+        color="b",
+        label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+        lw=2,
+        alpha=0.8,
+    )
+    std_tpr = np.std(tprs, axis=0)
+    tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+    tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+    ax.fill_between(
+        mean_fpr,
+        tprs_lower,
+        tprs_upper,
+        color="grey",
+        alpha=0.2,
+        label=r"$\pm$ 1 std. dev.",
+    )
+
+    # title = ax.set_title(pipeline)
+
+    # fig.tight_layout()
+    # title.set_y(1.05)
+    # fig.subplots_adjust(top=0.8)
+
+    # ax.set(
+    #     title=f"{pipeline}"
+    # )
+    # Shrink current axis
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height * 0.5])
+
+    # Put a legend to the right of the current axis
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.title({pipeline})
+    # Convert plot to PNG image
+    pngImage = io.BytesIO()
+    FigureCanvas(fig).print_png(pngImage)
+
+    # Encode PNG image to base64 string
+    pngImageB64String = "data:image/png;base64,"
+    pngImageB64String += base64.b64encode(pngImage.getvalue()).decode('utf8')
+
+    global_control.plots['test'].append(pngImageB64String)
+
+    plt.show()
+
+
+def start_test_thread(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=13, show_roc=True,
+                      t_test=True, test_size=0.1):
+    if isinstance(test_size, int):
+        test_size = test_size / 100
+    if isinstance(test_size, str):
+        test_size = int(test_size) / 100
+
+    running_threads = []
+    for thread in threading.enumerate():
+        running_threads.append(thread.name)
+
+    test_thread = threading.Thread(target=test_pipelines, name="test_thread",
+                                   args=(pipelines, file_name, n_jobs, cv,
+                                         random_state, show_roc, t_test, test_size))
+
+    if n_jobs <= global_control.machine_info['free_threads']:
+        test_thread.start()
+        global_control.machine_info['free_threads'] -= n_jobs
+        global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + f":</date> Test started ({file_name})"
+    else:
+        global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + ":</date> Not enough cores available."
+        print(f'Saving thread for later: {global_control.tpot_thread=}')
+        global_control.queue.append(global_control.tpot_thread)
+
+    log.info('TEST finished')

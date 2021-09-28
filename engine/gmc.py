@@ -111,14 +111,6 @@ def set_time_limits(time_s, generations):
         TIME_LIMIT_GENERATION = 1000000
 
 
-# Setting log to debug may cause printing logs from used liberties (e.g. matplotlib)
-log.basicConfig(level=log.DEBUG)
-log.getLogger(__name__).addHandler(log.StreamHandler)
-log.debug("this will get printed")
-log.info("this will get printed - info")
-log.warning("this will get printed - warning")
-log.error("this will get printed - error")
-log.critical("this will get printed - critical")
 
 CLASSIFIERS = [BernoulliNB(), GaussianNB(), KNeighborsClassifier(), DecisionTreeClassifier(), ExtraTreeClassifier(),
                RandomForestClassifier(), GradientBoostingClassifier(), LogisticRegression(),
