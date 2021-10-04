@@ -44,7 +44,7 @@ def save_results_gmc(population, pipe, subfolder):
     with open(os.path.join('results', subfolder, 'population.pickle'), 'wb') as handle:
         pickle.dump(population, handle, protocol=pickle.HIGHEST_PROTOCOL)
     best_individual = get_best_from_list(population.individuals)
-    print(f'Prekazana {population.dataset_name=}')
+    log.debug(f'Passed dataset: {population.dataset_name=}')
     summary = {'dataset_name': population.dataset_name, 'cv': best_individual.validation_method,
                'tool': 'GMC', 'score': best_individual.score,
                'pipe_string': best_individual.pipeline_string, 'train_set_rows': population.dataset_rows,
@@ -206,17 +206,17 @@ def update_plot_tpot(tpot_individuals):
                 # protect from -inf
                 if tpot_extracted_stats[x][1] > 0.0:
                     tmp_scores.append(tpot_extracted_stats[x][1])
-                print(f'{tpot_extracted_stats[x][1]=}')
+                log.debug(f'{tpot_extracted_stats[x][1]=}')
             tmp_generation.sort(key=lambda i: i[1], reverse=True)
             try:
                 bests.append(tmp_generation[0][1])
                 avgs.append(np.average(tmp_scores))
-                print(f'{tmp_scores=}')
+                log.debug(f'{tmp_scores=}')
                 tmp_scores = []
             except IndexError:
                 log.info('Too fast for TPOT')
                 return
-    print(f'TPOT last population size:{len(tmp_generation)}')
+    log.debug(f'TPOT last population size:{len(tmp_generation)}')
     if global_control.tpot_status['best_score'] < max(bests):
         global_control.tpot_status['best_score'] = max(bests)
         global_control.tpot_status['pipeline'] = tmp_generation[0][2]
@@ -295,7 +295,7 @@ def update_progress_nohof(progress: float, population: [], start: timer):
             datetime.now() - start)
         if global_control.status['best_score'] < best.score:
             global_control.status['best_score'] = best.score
-            print(f'{global_control.status["best_score"]= }')
+            log.debug(f'{global_control.status["best_score"]= }')
             global_control.status['pipeline'] = best.pipeline
         global_control.status['time'] = datetime.now() - start
 

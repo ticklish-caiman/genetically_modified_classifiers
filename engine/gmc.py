@@ -111,7 +111,6 @@ def set_time_limits(time_s, generations):
         TIME_LIMIT_GENERATION = 1000000
 
 
-
 CLASSIFIERS = [BernoulliNB(), GaussianNB(), KNeighborsClassifier(), DecisionTreeClassifier(), ExtraTreeClassifier(),
                RandomForestClassifier(), GradientBoostingClassifier(), LogisticRegression(),
                GaussianProcessClassifier(), PassiveAggressiveClassifier(), RidgeClassifier(), SGDClassifier(),
@@ -640,8 +639,8 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                         log.debug(f'float after crossover:{g3[key]}')
                         continue
                     if isinstance(g1[key], int) and isinstance(g2[key], int):
-                        print(f'int parent 1:{g1[key]}')
-                        print(f'int parent 2:{g2[key]}')
+                        log.debug(f'int parent 1:{g1[key]}')
+                        log.debug(f'int parent 2:{g2[key]}')
                         binary_1 = to_bit_array(g1[key])
                         binary_2 = to_bit_array(g2[key])
                         # we need equal binary arrays, let's add zeroes to left side of smaller one
@@ -662,7 +661,7 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                         for bit in x:
                             value = (value << 1) | bit
                         g3[key] = value
-                        print(f'int after point crossover:{g3[key]}')
+                        log.debug(f'int after point crossover:{g3[key]}')
 
                         continue
                 elif crossover_method == 'uniform':
@@ -782,7 +781,7 @@ def add_transformer(transformer_name, genotype):
         genotype['robustscaler__with_centering'] = bool(random.getrandbits(1))
         genotype['robustscaler__with_scaling'] = bool(random.getrandbits(1))
     if transformer_name == 'pca':
-        print('Maksymalne n_components:', MAX_N_COMPONENTS)
+        log.debug(f'{MAX_N_COMPONENTS=}')
         svd_solvers = ['auto', 'randomized', 'full', 'arpack']
         genotype['pca__copy'] = True
         genotype['pca__iterated_power'] = random.randint(1, 20)
@@ -913,7 +912,7 @@ def mutate(genotype, mutation_rate, mutation_power):
     if random.random() < mutation_rate / 10:
         random_name = random.choice(TRANSFORMERS_NAMES)
         if random_name not in genotype:
-            # print('Dodajemy randomowy transformator o nazwie:', random_name)
+            log.debug('Random transformer name:', random_name)
             genotype = add_transformer(random_name, genotype)
 
     return genotype

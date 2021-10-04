@@ -228,7 +228,7 @@ def main():
     def add_pipeline():
         if request.method == "GET" or request.method == "POST":
             selected_pipeline = request.form.get('pipelines')
-            print(f'{selected_pipeline=}')
+            log.debug(f'{selected_pipeline=}')
             global_control.TEST_PIPELINES.add(selected_pipeline)
             return redirect('/test')
 

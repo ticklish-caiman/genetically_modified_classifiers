@@ -6,18 +6,11 @@ header {
     margin: auto;
     margin-top: 3px;
     display: flex;
-    /*padding: 10px 10px 10px 10px;*/
-    /*-webkit-border-radius: 10px;*/
-    /*-moz-border-radius: 10px;*/
-    /*border-radius: 10px;*/
     display: flex;
     width: auto;
     max-width: 1600px;
-
     border: 5px outset #1C6EA4;
-    /*border-radius: 2px;*/
-    /*-webkit-box-shadow: 5px 5px 34px 5px #000000;*/
-    /*box-shadow: 5px 5px 34px 5px #000000;*/
+
 }
 
 body {
@@ -26,10 +19,6 @@ body {
     padding: 0;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #444;
-    /*display: flex;*/
-    /*flex-flow: row wrap;*/
-    /*flex-direction: initial;*/
-    /*flex-wrap: wrap;*/
     background: rgb(204, 239, 255);
     margin-bottom: 300px;
 }
@@ -91,11 +80,9 @@ h4 {
 div.info {
     margin-top: 10px;
     padding: 10px 10px 10px 10px;
-    /*background-color: #a6d4f8;*/
     -webkit-border-radius: 10px;
     -moz-border-radius: 10px;
     border-radius: 10px;
-    /*display: flex;*/
     -webkit-box-shadow: 5px 5px 5px 0px #000000, inset 4px 4px 15px 0px #000000, 9px 4px 26px 1px rgba(0, 0, 0, 0);
     box-shadow: 5px 5px 5px 0px #000000, inset 4px 4px 15px 0px #000000, 9px 4px 26px 1px rgba(0, 0, 0, 0);
 }
@@ -103,13 +90,8 @@ div.info {
 div.test {
     margin-top: 10px;
     padding: 10px 10px 10px 10px;
-    /*background-color: #a6d4f8;*/
     border: 3px outset #1C6EA4;
-    /*-webkit-border-radius: 10px;*/
-    /*-moz-border-radius: 10px;*/
-    /*border-radius: 19px;*/
     background-color: #a6d4f8;
-    /*display: flex;*/
 }
 
 div.test input {
@@ -121,13 +103,8 @@ div.test input {
 div.simple {
     margin-top: 10px;
     padding: 10px 10px 10px 10px;
-    /*background-color: #a6d4f8;*/
     border: 3px outset #1C6EA4;
-    /*-webkit-border-radius: 10px;*/
-    /*-moz-border-radius: 10px;*/
-    /*border-radius: 19px;*/
     background-color: #a6d4f8;
-    /*display: flex;*/
 }
 
 div.simple select {
@@ -145,7 +122,6 @@ div.simple input {
 div.simple input.evo {
     font-size: 200%;
     font-weight: bolder;
-    /*margin-left: 5%;*/
     display: block;
     alignment: center;
 }
@@ -180,7 +156,6 @@ progress_barr {
     position: absolute;
     margin-top: 1%;
     margin-right: 1%;
-    /*display: flex;*/
 }
 
 .menu li {
@@ -190,7 +165,6 @@ progress_barr {
 .menu li + li {
     margin-left: 15px;
 }
-
 
 .menu li a {
     font-family: "Perpetua Titling MT";
@@ -202,7 +176,6 @@ progress_barr {
     /*display: block;*/
 }
 
-
 .menu li a:hover {
     text-decoration: underline solid black;
     margin-top: auto;
@@ -210,7 +183,6 @@ progress_barr {
     color: #000000;
 
 }
-
 
 .menu li a.chosen {
     color: #444;
@@ -237,13 +209,11 @@ table {
     table-layout: fixed;
 }
 
-
 table td {
     border: solid 2px rgb(133, 142, 255);
     /*width: 100px;*/
     word-wrap: break-word;
 }
-
 
 .mystyle {
     font-size: 11pt;
@@ -274,8 +244,7 @@ input[type=checkbox] {
     transform: scale(1.8);
 }
 
-
-/*SLIDER from w3schools */
+                                                                /*SLIDER from w3schools */
 .slidecontainer {
     width: 100%; /* Width of the outside container */
 }
@@ -285,7 +254,6 @@ date {
     letter-spacing: -2px;
     color: #818181;
 }
-
 
 /* The slider itself */
 .slider {
@@ -299,7 +267,6 @@ date {
     -webkit-transition: .5s; /* 0.2 seconds transition on hover */
     transition: opacity .5s;
 }
-
 
 /* Mouse-over effects */
 .slider:hover {
@@ -366,7 +333,6 @@ hr {
 
 }
 
-
 span {
     text-align: center;
 }
@@ -376,14 +342,12 @@ span {
     background: transparent; /* Optional: just make scrollbar invisible */
 }
 
-
 .status {
     display: flex;
     flex-wrap: nowrap;
     white-space: nowrap;
 
 }
-
 
 .test select {
     min-width: 600px;
@@ -404,7 +368,6 @@ span {
 }
 
 /* w3s */
-
 .row {
     /* without flex status will have one column */
     border: 1px outset #1C6EA4;

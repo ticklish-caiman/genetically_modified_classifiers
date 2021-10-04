@@ -136,7 +136,7 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
     running_threads = []
     for thread in threading.enumerate():
         running_threads.append(thread.name)
-    print(running_threads)
+    log.info(f'{running_threads=}')
     if isinstance(validation_size, int):
         validation_size = validation_size / 100
     log.info(f'{validation_size=}')
