@@ -118,7 +118,7 @@ CLASSIFIERS = [BernoulliNB(), GaussianNB(), KNeighborsClassifier(), DecisionTree
                MLPClassifier(), LinearSVC(), SVC(), XGBClassifier(), NuSVC(), LinearDiscriminantAnalysis()]
 # LinearDiscriminantAnalysis causes a lot of computation errors in rare cases
 # another problematic one - NuSVC sometimes throwing ValueError: specified nu is infeasible
-
+# CLASSIFIERS = [LogisticRegression()]
 
 TRANSFORMERS = [StandardScaler(), MinMaxScaler(), RobustScaler(),
                 PCA(),
@@ -453,7 +453,11 @@ def test_population(population: Population, validation_method, x_train, y_train,
                         f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
                 x.validation_time = datetime.now() - start
                 x.validation_method = validation_method
-                x.score = sum(cv) / len(cv)
+                try:
+                    x.score = sum(cv) / len(cv)
+                except UnboundLocalError:
+                    log.critical(f'Cross-validation error - individual not tested:{x.pipeline}')
+
                 log.info(f'Pipeline {x.pipeline} \ntested in: {x.validation_time}, score:{x.score}')
 
             if to_ctx_mgr.state == to_ctx_mgr.EXECUTED:
@@ -595,7 +599,6 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
         g3 = g1
     else:
         g3 = g2
-
     log.debug(f'First parent genes:{g1}')
     log.debug(f'Second parent genes{g2}: ')
     keys_to_skip = {'classifier_type', 'verbose', 'random_state', 'gpu_id'}
@@ -809,7 +812,6 @@ def add_transformer(transformer_name, genotype):
             genotype['quantiletransformer__n_quantiles'] = random.randint(10, len(ORIGINAL_Y_TRAIN) // CV)
         else:
             genotype['quantiletransformer__n_quantiles'] = random.randint(1, 5)
-        print(f'  kłopot:{genotype["quantiletransformer__n_quantiles"]}')
         # test_samples/cv -> if LeaveOneOut test_samples - 1
         genotype['quantiletransformer__output_distribution'] = 'uniform'
         genotype['quantiletransformer__random_state'] = RANDOM_STATE
@@ -882,7 +884,7 @@ def mutate(genotype, mutation_rate, mutation_power):
             continue
         if isinstance(genotype[key], float):
             if genotype[key] > 1.0:
-                genotype[key] += genotype[key] * (np.random.uniform(-0.5, 0.5) * mutation_amount)
+                genotype[key] += abs(genotype[key] * (np.random.uniform(-0.5, 0.5) * mutation_amount))
             else:
                 if genotype[key] == 0.:
                     genotype[key] = np.random.uniform(0.00, 0.1)
@@ -1073,12 +1075,13 @@ def update_param_grid_big(clf, param_grid):
                            # solver='liblinear' does not support a multinomial backend
                            # warning! It's 'none', not None!
                            'logisticregression__penalty': ['l2', 'none'],
-                           'logisticregression__multi_class': ['ovr', 'multinomial', 'auto'],
+                           'logisticregression__multi_class': ['multinomial', 'auto'],  # ovr
                            'logisticregression__random_state': [RANDOM_STATE],
                            #  Invalid parameter max_squared_sum for estimator LogisticRegression
                            # 'logisticregression__max_squared_sum': [None],
                            'logisticregression__l1_ratio': [None, 0.5],
-                           # TODO: C, dual
+                           'logisticregression__C': [1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10.],
+                           'logisticregression__dual': [False]
                            })
 
     if isinstance(clf, GaussianProcessClassifier):
@@ -1205,9 +1208,9 @@ def update_param_grid_big(clf, param_grid):
             'mlpclassifier__solver': ['lbfgs', 'sgd', 'adam'],
             'mlpclassifier__alpha': [0.0001, 0.1, 0.00001],
             'mlpclassifier__learning_rate': ['constant', 'invscaling', 'adaptive'],
-            'mlpclassifier__learning_rate_init': [0.0001, 0.01, 0.00001],  # TODO 0.0000001 przesada
+            'mlpclassifier__learning_rate_init': [0.0001, 0.01, 0.00001],  # 0.0000001 is too little
             'mlpclassifier__power_t': [0.5, 0.1, 0.8],
-            'mlpclassifier__max_iter': [200, 20000],  # TODO  2000000lekka przesada
+            'mlpclassifier__max_iter': [200, 20000],  # 2000000 is too much
             'mlpclassifier__shuffle': [True],
             'mlpclassifier__random_state': [RANDOM_STATE],
             'mlpclassifier__tol': [1e-4, 1e-8, 1e-2],
@@ -1411,9 +1414,11 @@ def update_param_grid_minimal(clf, param_grid):
                            'logisticregression__tol': [0.001, 0.2],
                            'logisticregression__solver': ['lbfgs', 'newton-cg', 'sag'],
                            'logisticregression__penalty': ['l2', 'none'],
-                           'logisticregression__multi_class': ['ovr', 'multinomial', 'auto'],
+                           'logisticregression__multi_class': ['multinomial', 'auto'],  # ovr
                            'logisticregression__random_state': [RANDOM_STATE],
                            'logisticregression__l1_ratio': [None, 0.5],
+                           'logisticregression__C': [0.2, 0.7, 1.0, 5.0],
+                           'logisticregression__dual': [False]
                            })
 
     if isinstance(clf, GaussianProcessClassifier):
@@ -1721,13 +1726,15 @@ def update_param_grid_extreme(clf, param_grid):
         })
 
     if isinstance(clf, LogisticRegression):
-        param_grid.update({'logisticregression__max_iter': [100, 1000, 100000],
+        param_grid.update({'logisticregression__max_iter': [100000, 500000, 5000000],
                            'logisticregression__tol': [0.001, 0.2],
                            'logisticregression__solver': ['lbfgs', 'newton-cg', 'sag'],
                            'logisticregression__penalty': ['l2', 'none'],
-                           'logisticregression__multi_class': ['ovr', 'multinomial', 'auto'],
+                           'logisticregression__multi_class': ['multinomial', 'auto'],  # ovr
                            'logisticregression__random_state': [RANDOM_STATE],
                            'logisticregression__l1_ratio': [None, 0.5],
+                           'logisticregression__C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 150.],
+                           'logisticregression__dual': [False]
                            })
 
     if isinstance(clf, GaussianProcessClassifier):
@@ -2235,7 +2242,7 @@ def update_param_grid_identical_as_tpot(clf, param_grid):
             # 'extratreeclassifier__bootstrap': [True, False],
             'extratreeclassifier__random_state': [RANDOM_STATE],
         })
-    ExtraTreeClassifier
+    # ExtraTreeClassifier
     if isinstance(clf, RandomForestClassifier):
         param_grid.update({
             'randomforestclassifier__n_estimators': [100],

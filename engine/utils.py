@@ -123,7 +123,7 @@ def update_plot(population):
     besty = []
     avgs = []
 
-    # todo - optimize, global besty and avgs
+    # todo - optimize, global bests and avgs
     for i, x in enumerate(population.history):
         besty.append(get_best_from_list(x).score)
         avgs.append(average_score(x))
