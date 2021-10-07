@@ -444,7 +444,8 @@ def load_best_pipelines():
         try:
             with open(os.path.join(folder, 'best_pipeline_summary.pickle'), 'rb') as handle:
                 pipelines[folder[8:]] = pickle.load(handle)
-        except FileNotFoundError:
+        except (FileNotFoundError, EOFError):
+            log.error(f'Result file empty or corrupted')
             continue
     print(f'{pipelines=}')
     return pipelines
