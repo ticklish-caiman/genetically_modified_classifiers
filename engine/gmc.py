@@ -488,17 +488,23 @@ def test_population(population: Population, validation_method, x_train, y_train,
     log.info(f'Population size: {len(population.individuals)}')
     for x in population.individuals:
         x, population = test_individual(population, x, validation_method, x_train, y_train, grid_type)
-        if not np.isnan(x.score):
-            tested_population.individuals.append(x)
-        else:
-            log.critical(f'Critical error, individual not scored. Try increasing time limit or use less extreme grid')
-            x = generate_random_individual(grid_type)
-            x, population = test_individual(population, x, validation_method, x_train, y_train, grid_type)
+        try:
             if not np.isnan(x.score):
                 tested_population.individuals.append(x)
             else:
-                x.score = 0.0
-                tested_population.individuals.append(x)
+                log.critical(
+                    f'Critical error, individual not scored. Try increasing time limit or use less extreme grid')
+                x = generate_random_individual(grid_type)
+                x, population = test_individual(population, x, validation_method, x_train, y_train, grid_type)
+                if not np.isnan(x.score):
+                    tested_population.individuals.append(x)
+                else:
+                    x.score = 0.0
+                    tested_population.individuals.append(x)
+        except (TypeError, ValueError):
+            x.score = 0.0
+            tested_population.individuals.append(x)
+
     return validate_tested_population(tested_population)
 
 
