@@ -118,7 +118,7 @@ CLASSIFIERS = [BernoulliNB(), GaussianNB(), KNeighborsClassifier(), DecisionTree
                MLPClassifier(), LinearSVC(), SVC(), XGBClassifier(), NuSVC(), LinearDiscriminantAnalysis()]
 # LinearDiscriminantAnalysis causes a lot of computation errors in rare cases
 # another problematic one - NuSVC sometimes throwing ValueError: specified nu is infeasible
-# CLASSIFIERS = [LogisticRegression()]
+# CLASSIFIERS = [BernoulliNB()]
 
 TRANSFORMERS = [StandardScaler(), MinMaxScaler(), RobustScaler(),
                 PCA(),
@@ -188,7 +188,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
 
     if fresh_blood_mode:
         global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-            "%d.%m.%Y|%H-%M-%S") + ":</date> Fresh blood allowed."
+            "%d.%m.%Y|%H-%M-%S") + ":</date> Fresh genes allowed."
 
     hall_of_fame = []
     best = 0.
@@ -591,6 +591,52 @@ def unpack_history(population):
     return heaven
 
 
+def single_point_crossover(key1, key2):
+    binary_1 = to_bit_array(key1)
+    binary_2 = to_bit_array(key2)
+    # we need equal binary arrays, let's add zeroes to left side of smaller one
+    if len(binary_1) != len(binary_2):
+        if len(binary_1) > len(binary_2):
+            binary_2 = [0] * (len(binary_1) - len(binary_2)) + binary_2
+        else:
+            binary_1 = [0] * (len(binary_2) - len(binary_1)) + binary_1
+    # random point
+    point = random.randint(0, len(binary_2))
+    # random side
+    if random.random() > 0.5:
+        x = binary_1[:point] + binary_2[point:]
+    else:
+        x = binary_2[:point] + binary_1[point:]
+    # convert array of bits to int
+    value = 0
+    for bit in x:
+        value = (value << 1) | bit
+    return value
+
+
+def uniform_crossover(key1, key2):
+    binary_1 = to_bit_array(key1)
+    binary_2 = to_bit_array(key2)
+    # we need equal binary arrays, let's add zeroes to left side of smaller one
+    if len(binary_1) != len(binary_2):
+        if len(binary_1) > len(binary_2):
+            binary_2 = [0] * (len(binary_1) - len(binary_2)) + binary_2
+        else:
+            binary_1 = [0] * (len(binary_2) - len(binary_1)) + binary_1
+
+    x = []
+    # randomly assign bits
+    for i in range(len(binary_1)):
+        if random.random() > 0.5:
+            x.append(binary_1[i])
+        else:
+            x.append(binary_2[i])
+    value = 0
+    for bit in x:
+        value = (value << 1) | bit
+    return value
+
+
 def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rate, mutation_power):
     g1 = create_genome(inv1.pipeline)
     g2 = create_genome(inv2.pipeline)
@@ -599,14 +645,14 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
         g3 = g1
     else:
         g3 = g2
-    log.debug(f'First parent genes:{g1}')
-    log.debug(f'Second parent genes{g2}: ')
+    print(f'First parent genes:{g1}')
+    print(f'Second parent genes{g2}: ')
     keys_to_skip = {'classifier_type', 'verbose', 'random_state', 'gpu_id'}
 
     # mixing common keys
     for key in g1:
         if key in g2:
-            log.debug(f'Common key:{key}')
+            print(f'Common key:{key}')
             if key not in keys_to_skip:
                 # always check if is bool first if you also checking if is int, remember to add continue/break
                 if isinstance(g1[key], bool) and isinstance(g2[key], bool):
@@ -621,7 +667,7 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                         g3[key] = g1[key]
                     else:
                         g3[key] = g2[key]
-                    log.debug(f'Random string from one of parents:{g3[key]}')
+                    print(f'Random string from one of parents:{g3[key]}')
                     continue
 
                 if crossover_method == 'average':
@@ -637,67 +683,35 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
 
                 elif crossover_method == 'single-point':
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
-                        # TODO
-                        g3[key] = (g1[key] + g2[key]) / 2
-                        log.debug(f'float after crossover:{g3[key]}')
+
+                        split1 = g1[key] // 1, g1[key] % 1
+                        split2 = g2[key] // 1, g2[key] % 1
+
+                        before_dec = single_point_crossover(int(split1[0]), int(split2[0]))
+                        after_dec = single_point_crossover(int(str(split1[1]).split('.')[1]),
+                                                           int(str(split2[1]).split('.')[1]))
+
+                        g3[key] = float(f'{before_dec}.{after_dec}')
                         continue
                     if isinstance(g1[key], int) and isinstance(g2[key], int):
-                        log.debug(f'int parent 1:{g1[key]}')
-                        log.debug(f'int parent 2:{g2[key]}')
-                        binary_1 = to_bit_array(g1[key])
-                        binary_2 = to_bit_array(g2[key])
-                        # we need equal binary arrays, let's add zeroes to left side of smaller one
-                        if len(binary_1) != len(binary_2):
-                            if len(binary_1) > len(binary_2):
-                                binary_2 = [0] * (len(binary_1) - len(binary_2)) + binary_2
-                            else:
-                                binary_1 = [0] * (len(binary_2) - len(binary_1)) + binary_1
-                        # random point
-                        point = random.randint(0, len(binary_2))
-                        # random side
-                        if random.random() > 0.5:
-                            x = binary_1[:point] + binary_2[point:]
-                        else:
-                            x = binary_2[:point] + binary_1[point:]
-                        # convert array of bits to int
-                        value = 0
-                        for bit in x:
-                            value = (value << 1) | bit
-                        g3[key] = value
-                        log.debug(f'int after point crossover:{g3[key]}')
-
+                        g3[key] = single_point_crossover(g1[key], g2[key])
                         continue
                 elif crossover_method == 'uniform':
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
-                        # TODO
-                        g3[key] = (g1[key] + g2[key]) / 2
-                        log.debug(f'float after crossover:{g3[key]}')
+                        split1 = g1[key] // 1, g1[key] % 1
+                        split2 = g2[key] // 1, g2[key] % 1
+
+                        before_dec = uniform_crossover(int(split1[0]), int(split2[0]))
+                        after_dec = uniform_crossover(int(str(split1[1]).split('.')[1]),
+                                                      int(str(split2[1]).split('.')[1]))
+
+                        g3[key] = float(f'{before_dec}.{after_dec}')
+                        print(f'float after crossover:{g3[key]}')
                         continue
                     if isinstance(g1[key], int) and isinstance(g2[key], int):
                         if g1[key] == -1 or g2[key] == -1:
                             continue
-                        print(f'int parent 1:{g1[key]}')
-                        print(f'int parent 2:{g2[key]}')
-                        binary_1 = to_bit_array(g1[key])
-                        binary_2 = to_bit_array(g2[key])
-                        # we need equal binary arrays, let's add zeroes to left side of smaller one
-                        if len(binary_1) != len(binary_2):
-                            if len(binary_1) > len(binary_2):
-                                binary_2 = [0] * (len(binary_1) - len(binary_2)) + binary_2
-                            else:
-                                binary_1 = [0] * (len(binary_2) - len(binary_1)) + binary_1
-                        x = []
-                        # randomly assign bits
-                        for i in range(len(binary_1)):
-                            if random.random() > 0.5:
-                                x.append(binary_1[i])
-                            else:
-                                x.append(binary_2[i])
-                        value = 0
-                        for bit in x:
-                            value = (value << 1) | bit
-                        g3[key] = value
-                        print(f'int after uniform crossover:{g3[key]}')
+                        g3[key] = uniform_crossover(g1[key], g2[key])
                         continue
         else:
             log.debug('No common keys')
@@ -705,9 +719,9 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
     if mutation_rate > random.uniform(0., 1.):
         g3 = mutate(g3, mutation_rate, mutation_power)
 
-    log.debug(f'Creating child from genome:{g3}')
+    print(f'Creating child from genome:{g3}')
     pipeline = create_pipeline(g3)
-    log.debug(f'Created pipeline:{pipeline}')
+    print(f'Created pipeline:{pipeline}')
     return Individual(pipeline=pipeline, genome=g3, validation_method=None, score=None, validation_time=None,
                       pipeline_string=str(pipeline))
 
@@ -867,7 +881,8 @@ def mutate(genotype, mutation_rate, mutation_power):
     for key in genotype:
         if key in keys_to_skip:
             continue
-
+        print(f'{key=}')
+        print(f'{genotype[key]=}')
         if random.random() > mutation_rate:
             continue
         if isinstance(genotype[key], tuple):
@@ -895,6 +910,7 @@ def mutate(genotype, mutation_rate, mutation_power):
                     # in case the upper limit of value is less than 1.0
                     while genotype[key] >= 1.:
                         genotype[key] += genotype[key] * (np.random.uniform(-0.05, -0.01) * mutation_amount)
+            print(f'After: {genotype[key]=}')
             continue
         if isinstance(genotype[key], int):
             if genotype[key] > 0:
