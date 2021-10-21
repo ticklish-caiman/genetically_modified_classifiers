@@ -683,13 +683,22 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
 
                 elif crossover_method == 'single-point':
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
-
+                        print(f'{g1[key]=}')
+                        print(f'{g2[key]=}')
                         split1 = g1[key] // 1, g1[key] % 1
                         split2 = g2[key] // 1, g2[key] % 1
-
+                        print(f'{split1=}')
+                        print(f'{split2=}')
                         before_dec = single_point_crossover(int(split1[0]), int(split2[0]))
-                        after_dec = single_point_crossover(int(str(split1[1]).split('.')[1]),
-                                                           int(str(split2[1]).split('.')[1]))
+                        # scientific notation eg 1e-09 will cause IndexError in split function
+                        # therefore we have to make sure it's in positional notation
+                        if split1[1] != 0.0:
+                            split1 = split1[0], np.format_float_positional(split1[1])
+                        if split2[1] != 0.0:
+                            split2 = split2[0], np.format_float_positional(split2[1])
+                        after_dec = single_point_crossover(
+                            int(str(split1[1]).split('.')[1]),
+                            int(str(split2[1]).split('.')[1]))
 
                         g3[key] = float(f'{before_dec}.{after_dec}')
                         continue
@@ -702,6 +711,10 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                         split2 = g2[key] // 1, g2[key] % 1
 
                         before_dec = uniform_crossover(int(split1[0]), int(split2[0]))
+                        if split1[1] != 0.0:
+                            split1 = split1[0], np.format_float_positional(split1[1])
+                        if split2[1] != 0.0:
+                            split2 = split2[0], np.format_float_positional(split2[1])
                         after_dec = uniform_crossover(int(str(split1[1]).split('.')[1]),
                                                       int(str(split2[1]).split('.')[1]))
 
