@@ -296,7 +296,7 @@ def init_population(pop_size: int, grid_type: str):
 def generate_random_individual(grid_type):
     transformers = set()
     # randomly choose transformers
-    for x in range(random.randint(0, 1)):
+    for x in range(random.randint(0, 3)):
         transformers.add(random.choice(TRANSFORMERS))
 
     param_grid, name_object_tuples = get_min_param_grid_and_tuple_list(transformers)
@@ -364,8 +364,8 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
         # for i in range(len(next_generation.individuals)):
         #     print(next_generation.individuals[i].score)
 
-    print(f'{crossover_rate=}')
-    print(f'{crossover_method=}')
+    # print(f'{crossover_rate=}')
+    # print(f'{crossover_method=}')
     # creating new generation
     for x in range(len(population.individuals) - len(next_generation.individuals)):
         # crossover with selection - add new individual to next_generation
@@ -396,6 +396,89 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
     return next_generation, hall_of_fame
 
 
+def test_individual(population: Population, x: Individual, validation_method, x_train, y_train, grid_type):
+    if x.pipeline_string is None:
+        x.pipeline_string = str(x.pipeline)
+    if x.genome is None:
+        log.info('No genome found. Generating genome.')
+        x.genome = create_genome(x.pipeline)
+    if x.score is None:
+        for y in population.individuals:
+            # if x.genome == y.genome and y.score is not None:
+            # DeepDiff also returns what exactly didn't match
+            if y.score is not None and not DeepDiff(x.genome, y.genome, significant_digits=10):
+                log.warning(
+                    f'Identical pipeline was already tested. If you get this message often - increase genes variety. \nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} ')
+                log.debug('Generating random individual')
+                x = generate_random_individual(grid_type)
+                x.genome = create_genome(x.pipeline)
+                break
+        log.debug('Passing pipeline to test:' + str(x.pipeline))
+        with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE) as to_ctx_mgr:
+            assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
+            start = datetime.now()
+            try:
+                cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS,
+                                     error_score="raise")
+            except (TypeError, ValueError) as e:
+                population.failed_to_test.append(x)
+                log.error("FITTING ERROR - RESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
+                log.error(e.__class__)
+                log.error(e)
+                x_train = ORIGINAL_X_TRAIN.copy()
+                y_train = ORIGINAL_Y_TRAIN.copy()
+                x = generate_random_individual(grid_type)
+                start = datetime.now()
+                try:
+                    cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
+                except (TypeError, ValueError) as e:
+                    log.critical(
+                        'Critical error - unable to generate random individual')
+                    log.error(e.__class__)
+                    log.error(e)
+                    population.failed_to_test.append(x)
+                except Exception:
+                    log.critical(
+                        f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
+            except Exception:
+                log.critical(
+                    f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
+            x.validation_time = datetime.now() - start
+            x.validation_method = validation_method
+            try:
+                x.score = sum(cv) / len(cv)
+            except UnboundLocalError:
+                log.critical(f'Cross-validation error - individual not tested:{x.pipeline}')
+
+            log.info(f'Pipeline {x.pipeline} \ntested in: {x.validation_time}, score:{x.score}')
+        if to_ctx_mgr.state == to_ctx_mgr.EXECUTED:
+            log.info('Pipeline validation was successfull')
+        elif to_ctx_mgr.state == to_ctx_mgr.EXECUTING:
+            log.error('Time limitations error - executing was passed after execution')
+        elif to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
+            log.error(f'Time limitation exceeded, skipped pipeline: {x.pipeline}')
+            log.info('Generating random individual')
+            x = generate_random_individual(grid_type)
+            x.genome = create_genome(x.pipeline)
+            x.pipeline.fit(x_train, y_train)
+            cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
+            x.validation_method = validation_method
+            x.score = sum(cv) / len(cv)
+        elif to_ctx_mgr.state == to_ctx_mgr.INTERRUPTED:
+            log.warning('Time limitation interrupted')
+            x = generate_random_individual(grid_type)
+            x.genome = create_genome(x.pipeline)
+            x.pipeline.fit(x_train, y_train)
+            cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
+            x.validation_method = validation_method
+            x.score = sum(cv) / len(cv)
+        elif to_ctx_mgr.state == to_ctx_mgr.CANCELED:
+            print('Oh you called to_ctx_mgr.cancel() method within the block but it')
+        else:
+            print('That\'s not possible')
+    return x, population
+
+
 def test_population(population: Population, validation_method, x_train, y_train, grid_type):
     tested_population = Population(individuals=[], history=population.history, dataset_name=population.dataset_name,
                                    dataset_rows=population.dataset_rows,
@@ -404,89 +487,18 @@ def test_population(population: Population, validation_method, x_train, y_train,
                                    random_state=RANDOM_STATE, failed_to_test=population.failed_to_test)
     log.info(f'Population size: {len(population.individuals)}')
     for x in population.individuals:
-        if x.pipeline_string is None:
-            x.pipeline_string = str(x.pipeline)
-        if x.genome is None:
-            log.info('No genome found. Generating genome.')
-            x.genome = create_genome(x.pipeline)
-        if x.score is None:
-            for y in population.individuals:
-                # if x.genome == y.genome and y.score is not None:
-                # DeepDiff also returns what exactly didn't match
-                if y.score is not None and not DeepDiff(x.genome, y.genome, significant_digits=5):
-                    log.warning(
-                        'Identical pipeline was already tested. If you get this message often - increase '
-                        'genes variety')
-                    log.debug('Generating random individual')
-                    x = generate_random_individual(grid_type)
-                    x.genome = create_genome(x.pipeline)
-                    break
-            log.debug('Passing pipeline to test:' + str(x.pipeline))
-            with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE) as to_ctx_mgr:
-                assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
-                start = datetime.now()
-                try:
-                    cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS,
-                                         error_score="raise")
-                except (TypeError, ValueError) as e:
-                    population.failed_to_test.append(x)
-                    log.error("FITTING ERROR - RESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
-                    log.error(e.__class__)
-                    log.error(e)
-                    x_train = ORIGINAL_X_TRAIN.copy()
-                    y_train = ORIGINAL_Y_TRAIN.copy()
-                    x = generate_random_individual(grid_type)
-                    start = datetime.now()
-                    try:
-                        cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
-                    except (TypeError, ValueError) as e:
-                        log.critical(
-                            'Critical error - unable to generate random individual')
-                        log.error(e.__class__)
-                        log.error(e)
-                        population.failed_to_test.append(x)
-                    except Exception:
-                        log.critical(
-                            f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
-                except Exception:
-                    log.critical(
-                        f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
-                x.validation_time = datetime.now() - start
-                x.validation_method = validation_method
-                try:
-                    x.score = sum(cv) / len(cv)
-                except UnboundLocalError:
-                    log.critical(f'Cross-validation error - individual not tested:{x.pipeline}')
-
-                log.info(f'Pipeline {x.pipeline} \ntested in: {x.validation_time}, score:{x.score}')
-
-            if to_ctx_mgr.state == to_ctx_mgr.EXECUTED:
-                log.info('Pipeline validation was successfull')
-            elif to_ctx_mgr.state == to_ctx_mgr.EXECUTING:
-                log.error('Time limitations error - executing was passed after execution')
-            elif to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
-                log.warning(f'Time limitation exceeded, skipped pipeline: {x.pipeline}')
-                log.info('Generating random individual')
-                x = generate_random_individual(grid_type)
-                x.genome = create_genome(x.pipeline)
-                x.pipeline.fit(x_train, y_train)
-                cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
-                x.validation_method = validation_method
-                x.score = sum(cv) / len(cv)
-            elif to_ctx_mgr.state == to_ctx_mgr.INTERRUPTED:
-                log.warning('Time limitation interrupted')
-                x = generate_random_individual(grid_type)
-                x.genome = create_genome(x.pipeline)
-                x.pipeline.fit(x_train, y_train)
-                cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
-                x.validation_method = validation_method
-                x.score = sum(cv) / len(cv)
-            elif to_ctx_mgr.state == to_ctx_mgr.CANCELED:
-                print('Oh you called to_ctx_mgr.cancel() method within the block but it')
+        x, population = test_individual(population, x, validation_method, x_train, y_train, grid_type)
+        if not np.isnan(x.score):
+            tested_population.individuals.append(x)
+        else:
+            log.critical(f'Critical error, individual not scored. Try increasing time limit or use less extreme grid')
+            x = generate_random_individual(grid_type)
+            x, population = test_individual(population, x, validation_method, x_train, y_train, grid_type)
+            if not np.isnan(x.score):
+                tested_population.individuals.append(x)
             else:
-                print('That\'s not possible')
-        tested_population.individuals.append(x)
-
+                x.score = 0.0
+                tested_population.individuals.append(x)
     return validate_tested_population(tested_population)
 
 
@@ -645,15 +657,21 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
         g3 = g1
     else:
         g3 = g2
-    print(f'First parent genes:{g1}')
-    print(f'Second parent genes{g2}: ')
+    # print(f'First parent genes:{g1}')
+    # print(f'Second parent genes{g2}: ')
     keys_to_skip = {'classifier_type', 'verbose', 'random_state', 'gpu_id'}
 
     # mixing common keys
     for key in g1:
         if key in g2:
-            print(f'Common key:{key}')
+            # print(f'Common key:{key}')
             if key not in keys_to_skip:
+                # skip nans
+                try:
+                    if np.isnan(g1[key]) or np.isnan(g2[key]):
+                        continue
+                except (TypeError, ValueError):
+                    continue
                 # always check if is bool first if you also checking if is int, remember to add continue/break
                 if isinstance(g1[key], bool) and isinstance(g2[key], bool):
                     if random.random() > 0.5:
@@ -667,7 +685,7 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                         g3[key] = g1[key]
                     else:
                         g3[key] = g2[key]
-                    print(f'Random string from one of parents:{g3[key]}')
+                    # print(f'Random string from one of parents:{g3[key]}')
                     continue
 
                 if crossover_method == 'average':
@@ -683,12 +701,10 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
 
                 elif crossover_method == 'single-point':
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
-                        print(f'{g1[key]=}')
-                        print(f'{g2[key]=}')
                         split1 = g1[key] // 1, g1[key] % 1
                         split2 = g2[key] // 1, g2[key] % 1
-                        print(f'{split1=}')
-                        print(f'{split2=}')
+                        # print(f'{split1=}')
+                        # print(f'{split2=}')
                         before_dec = single_point_crossover(int(split1[0]), int(split2[0]))
                         # scientific notation eg 1e-09 will cause IndexError in split function
                         # therefore we have to make sure it's in positional notation
@@ -707,9 +723,12 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                         continue
                 elif crossover_method == 'uniform':
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
+                        print(f'{g1[key]=}')
+                        print(f'{g2[key]=}')
                         split1 = g1[key] // 1, g1[key] % 1
                         split2 = g2[key] // 1, g2[key] % 1
-
+                        print(f'{split1=}')
+                        print(f'{split2=}')
                         before_dec = uniform_crossover(int(split1[0]), int(split2[0]))
                         if split1[1] != 0.0:
                             split1 = split1[0], np.format_float_positional(split1[1])
@@ -719,7 +738,7 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                                                       int(str(split2[1]).split('.')[1]))
 
                         g3[key] = float(f'{before_dec}.{after_dec}')
-                        print(f'float after crossover:{g3[key]}')
+                        print(f'float after uniform crossover:{g3[key]}')
                         continue
                     if isinstance(g1[key], int) and isinstance(g2[key], int):
                         if g1[key] == -1 or g2[key] == -1:
@@ -732,9 +751,9 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
     if mutation_rate > random.uniform(0., 1.):
         g3 = mutate(g3, mutation_rate, mutation_power)
 
-    print(f'Creating child from genome:{g3}')
+    # print(f'Creating child from genome:{g3}')
     pipeline = create_pipeline(g3)
-    print(f'Created pipeline:{pipeline}')
+    # print(f'Created pipeline:{pipeline}')
     return Individual(pipeline=pipeline, genome=g3, validation_method=None, score=None, validation_time=None,
                       pipeline_string=str(pipeline))
 
@@ -894,8 +913,8 @@ def mutate(genotype, mutation_rate, mutation_power):
     for key in genotype:
         if key in keys_to_skip:
             continue
-        print(f'{key=}')
-        print(f'{genotype[key]=}')
+        # print(f'{key=}')
+        # print(f'{genotype[key]=}')
         if random.random() > mutation_rate:
             continue
         if isinstance(genotype[key], tuple):
@@ -923,7 +942,7 @@ def mutate(genotype, mutation_rate, mutation_power):
                     # in case the upper limit of value is less than 1.0
                     while genotype[key] >= 1.:
                         genotype[key] += genotype[key] * (np.random.uniform(-0.05, -0.01) * mutation_amount)
-            print(f'After: {genotype[key]=}')
+            # print(f'After: {genotype[key]=}')
             continue
         if isinstance(genotype[key], int):
             if genotype[key] > 0:
