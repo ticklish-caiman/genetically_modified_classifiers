@@ -338,7 +338,18 @@ def generate_random_individual(grid_type):
         elif to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
             log.warning(f'Preselection time limitation exceeded - selecting at random')
 
-    random_individual_grid = grid[random.randint(0, len(grid) - 1)]
+    # IndexError: ParameterGrid index out of range
+    # e.g.
+    #  random_grid_index=3796231240
+    #          len(grid)=5836800000
+    # it seems to only happen with TPOTish grid and every call, even grid[0] throws IE
+    # for now recursive fix was applied
+    random_grid_index = random.randint(0, len(grid) - 1)
+    try:
+        random_individual_grid = grid[random_grid_index]
+    except IndexError:
+        log.error(f'Random grid selection failed.')
+        return generate_random_individual(grid_type)
 
     pipeline.set_params(**random_individual_grid)
     log.debug(f'Random pipeline: {pipeline}')
