@@ -383,24 +383,23 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
         if crossover_rate > random.random():
             if selection_type == 'roulette':
                 next_generation.individuals.append(
-                    crossover(roulette(population.individuals), roulette(population.individuals), crossover_method,
-                              mutation_rate, mutation_power))
+                    crossover(roulette(population.individuals), roulette(population.individuals), crossover_method))
             if selection_type == 'tournament5':
                 next_generation.individuals.append(
                     crossover(tournament(population.individuals, 5), tournament(population.individuals, 5),
-                              crossover_method, mutation_rate, mutation_power))
+                              crossover_method))
             if selection_type == 'tournament10':
                 next_generation.individuals.append(
                     crossover(tournament(population.individuals, 10), tournament(population.individuals, 10),
-                              crossover_method, mutation_rate, mutation_power))
+                              crossover_method))
             if selection_type == 'tournament15':
                 next_generation.individuals.append(
                     crossover(tournament(population.individuals, 15), tournament(population.individuals, 15),
-                              crossover_method, mutation_rate, mutation_power))
+                              crossover_method))
             if selection_type == 'tournament20':
                 next_generation.individuals.append(
                     crossover(tournament(population.individuals, 20), tournament(population.individuals, 20),
-                              crossover_method, mutation_rate, mutation_power))
+                              crossover_method))
         else:
             if selection_type == 'roulette':
                 next_generation.individuals.append(roulette(population.individuals))
@@ -412,6 +411,15 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                 next_generation.individuals.append(tournament(population.individuals, 15))
             if selection_type == 'tournament20':
                 next_generation.individuals.append(tournament(population.individuals, 20))
+
+    for x in range(len(next_generation.individuals) - elitism):
+        if mutation_rate > random.random():
+            try:
+                genes = mutate(create_genome(next_generation.individuals[x + elitism].pipeline), mutation_rate,
+                               mutation_power)
+            except OverflowError:
+                continue
+            next_generation.individuals[x + elitism].pipeline = create_pipeline(genes)
 
     return next_generation, hall_of_fame
 
@@ -675,7 +683,7 @@ def uniform_crossover(key1, key2):
     return value
 
 
-def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rate, mutation_power):
+def crossover(inv1: Individual, inv2: Individual, crossover_method):
     g1 = create_genome(inv1.pipeline)
     g2 = create_genome(inv2.pipeline)
     # Base child on random parent
@@ -773,9 +781,6 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method, mutation_rat
                         continue
         else:
             log.debug('No common keys')
-
-    if mutation_rate > random.uniform(0., 1.):
-        g3 = mutate(g3, mutation_rate, mutation_power)
 
     # print(f'Creating child from genome:{g3}')
     pipeline = create_pipeline(g3)
