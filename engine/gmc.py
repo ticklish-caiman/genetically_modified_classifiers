@@ -402,7 +402,16 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                     crossover(tournament(population.individuals, 20), tournament(population.individuals, 20),
                               crossover_method, mutation_rate, mutation_power))
         else:
-            next_generation.individuals.append(roulette(population.individuals))
+            if selection_type == 'roulette':
+                next_generation.individuals.append(roulette(population.individuals))
+            if selection_type == 'tournament5':
+                next_generation.individuals.append(tournament(population.individuals, 5))
+            if selection_type == 'tournament10':
+                next_generation.individuals.append(tournament(population.individuals, 10))
+            if selection_type == 'tournament15':
+                next_generation.individuals.append(tournament(population.individuals, 15))
+            if selection_type == 'tournament20':
+                next_generation.individuals.append(tournament(population.individuals, 20))
 
     return next_generation, hall_of_fame
 
