@@ -8,6 +8,7 @@ import base64
 import io
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from datetime import datetime
 
 global status
 global tpot_status
@@ -17,6 +18,8 @@ global stop_tpot
 global tpot
 global cached_data
 global last_selections
+global last_selections_gmc
+global last_selections_tpot
 global current_cpu_usage
 global cpu_history
 global mem_history
@@ -87,7 +90,39 @@ def init_selections():
     last_selections['classes'] = 'No data displayed.'
 
 
-from datetime import datetime
+def init_selections_gmc():
+    global last_selections_gmc
+    last_selections_gmc = dict()
+    last_selections_gmc['pop_size'] = 100
+    last_selections_gmc['gen_size'] = 1000
+    last_selections_gmc['elitism'] = 10
+    last_selections_gmc['cv'] = 10
+    last_selections_gmc['early_stop'] = 100
+    last_selections_gmc['cross_chance'] = 20
+    last_selections_gmc['cross_method'] = 1
+    last_selections_gmc['random_state'] = 13
+    last_selections_gmc['selection_method'] = 0
+    last_selections_gmc['mutation'] = 90
+    last_selections_gmc['mutation_power'] = 200
+    last_selections_gmc['pipe_time'] = 15
+    last_selections_gmc['validation_part'] = 10
+    last_selections_gmc['preselection'] = False
+    last_selections_gmc['fresh_genes'] = False
+
+
+def init_selections_tpot():
+    global last_selections_tpot
+    last_selections_tpot = dict()
+    last_selections_tpot['pop_size'] = 100
+    last_selections_tpot['offspring_size'] = 100
+    last_selections_tpot['gen_size'] = 1000
+    last_selections_tpot['cv'] = 10
+    last_selections_tpot['cross_chance'] = 10
+    last_selections_tpot['early_stop'] = 100
+    last_selections_tpot['pipe_time'] = 15
+    last_selections_tpot['mutation'] = 90
+    last_selections_tpot['random_state'] = 13
+    last_selections_tpot['validation_part'] = 10
 
 
 def initialize_status():
@@ -247,6 +282,7 @@ def init_control():
     init_mem_history()
     init_queue()
     init_pipelines()
-
+    init_selections_gmc()
+    init_selections_tpot()
     update_usage()
     # update_memory_usage()

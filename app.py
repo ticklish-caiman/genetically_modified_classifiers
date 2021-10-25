@@ -57,7 +57,30 @@ def main():
         else:
             selected_grid = gmc_interface.grids[0]
 
-        state = {'dataset': selected_dataset, 'grid': selected_grid}
+        selected_pop_size = global_control.last_selections_gmc['pop_size']
+        selected_gen_size = global_control.last_selections_gmc['gen_size']
+        selected_elitism = global_control.last_selections_gmc['elitism']
+        selected_cv = global_control.last_selections_gmc['cv']
+        selected_early_stop = global_control.last_selections_gmc['early_stop']
+        selected_cross_chance = global_control.last_selections_gmc['cross_chance']
+        selected_cross_method = global_control.last_selections_gmc['cross_method']
+        selected_random_state = global_control.last_selections_gmc['random_state']
+        selected_selection_method = global_control.last_selections_gmc['selection_method']
+        selected_mutation = global_control.last_selections_gmc['mutation']
+        selected_mutation_power = global_control.last_selections_gmc['mutation_power']
+        selected_pipe_time = global_control.last_selections_gmc['pipe_time']
+        selected_validation_part = global_control.last_selections_gmc['validation_part']
+
+        preselection = global_control.last_selections_gmc['preselection']
+        fresh_genes = global_control.last_selections_gmc['fresh_genes']
+
+        state = {'dataset': selected_dataset, 'validation_size': selected_validation_part,
+                 'pop_size': selected_pop_size, 'gen_size': selected_gen_size, 'elitism': selected_elitism,
+                 'cv': selected_cv, 'cross_chance': selected_cross_chance, 'cross_method': selected_cross_method,
+                 'selection_method': selected_selection_method, 'early_stop': selected_early_stop,
+                 'pipe_time': selected_pipe_time, 'mutation': selected_mutation,
+                 'mutation_power': selected_mutation_power, 'random_state': selected_random_state,
+                 'grid': selected_grid, 'preselection': preselection, 'fresh_genes': fresh_genes}
         return render_template('gmc.html', datasets=gmc_interface.datasets, grids=gmc_interface.grids,
                                free_threads=global_control.machine_info['free_threads'], state=state)
 
@@ -68,7 +91,22 @@ def main():
         else:
             selected_dataset = gmc_interface.datasets[0]
 
-        state = {'dataset': selected_dataset}
+        selected_pop_size = global_control.last_selections_tpot['pop_size']
+        selected_offspring_size = global_control.last_selections_tpot['offspring_size']
+        selected_gen_size = global_control.last_selections_tpot['gen_size']
+        selected_cv = global_control.last_selections_tpot['cv']
+        selected_early_stop = global_control.last_selections_tpot['early_stop']
+        selected_cross_chance = global_control.last_selections_tpot['cross_chance']
+        selected_random_state = global_control.last_selections_tpot['random_state']
+        selected_mutation = global_control.last_selections_tpot['mutation']
+        selected_pipe_time = global_control.last_selections_tpot['pipe_time']
+        selected_validation_part = global_control.last_selections_tpot['validation_part']
+
+        state = {'dataset': selected_dataset, 'validation_size': selected_validation_part,
+                 'pop_size': selected_pop_size, 'offspring_size': selected_offspring_size,
+                 'gen_size': selected_gen_size,
+                 'cv': selected_cv, 'cross_chance': selected_cross_chance, 'early_stop': selected_early_stop,
+                 'pipe_time': selected_pipe_time, 'mutation': selected_mutation, 'random_state': selected_random_state}
         return render_template('tpot.html', datasets=gmc_interface.datasets,
                                free_threads=global_control.machine_info['free_threads'], state=state)
 
@@ -176,6 +214,21 @@ def main():
             mutation_power = int(request.form['mutation_power'])
             pipeline_time_limit = int(request.form['pipe_time']) * 60
             grid = request.form['grids']
+
+            global_control.last_selections_gmc['pop_size'] = pop_size
+            global_control.last_selections_gmc['gen_size'] = generations
+            global_control.last_selections_gmc['elitism'] = elitism
+            global_control.last_selections_gmc['cv'] = cv
+            global_control.last_selections_gmc['early_stop'] = early_stop
+            global_control.last_selections_gmc['cross_chance'] = cross_chance
+            global_control.last_selections_gmc['cross_method'] = cross_method
+            global_control.last_selections_gmc['random_state'] = random_state
+            global_control.last_selections_gmc['selection_method'] = selection_type
+            global_control.last_selections_gmc['mutation'] = mutation
+            global_control.last_selections_gmc['mutation_power'] = mutation_power
+            global_control.last_selections_gmc['pipe_time'] = request.form['pipe_time']
+            global_control.last_selections_gmc['validation_part'] = validation_size
+
             try:
                 preselection = request.form["preselection"]
             except KeyError:
@@ -184,6 +237,10 @@ def main():
                 fresh_blood = request.form["fresh_blood"]
             except KeyError:
                 fresh_blood = False
+
+            global_control.last_selections_gmc['preselection'] = preselection
+            global_control.last_selections_gmc['fresh_genes'] = fresh_blood
+
             if n_jobs == 0:
                 global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + ':</date> Zero cores = zero work'
@@ -213,6 +270,17 @@ def main():
             random_state = int(request.form['random_state'])
             mutation = int(request.form['mutation'])
             pipeline_time_limit = int(request.form['pipe_time']) * 60
+
+            global_control.last_selections_tpot['pop_size'] = pop_size
+            global_control.last_selections_tpot['offspring_size'] = offspring_size
+            global_control.last_selections_tpot['gen_size'] = generations
+            global_control.last_selections_tpot['cv'] = cv
+            global_control.last_selections_tpot['early_stop'] = early_stop
+            global_control.last_selections_tpot['cross_chance'] = cross_chance
+            global_control.last_selections_tpot['random_state'] = random_state
+            global_control.last_selections_tpot['mutation'] = mutation
+            global_control.last_selections_tpot['pipe_time'] = request.form['pipe_time']
+            global_control.last_selections_tpot['validation_part'] = validation_size
 
             if n_jobs == 0:
                 global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
