@@ -488,10 +488,13 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Testing: {pipeline}"
                 cv_score = cross_val_score(pipeline, x_train, y_train, cv=10, n_jobs=4, error_score="raise")
+                test_score = pipeline.fit(x_train, y_train).score(x_test, y_test)
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-validation: {cv_score}"
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Average: {sum(cv_score) / len(cv_score)}"
+                global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+                    "%d.%m.%Y|%H-%M-%S") + f":</date> Test score: {test_score}"
                 if show_roc:
                     generate_roc(cv, x_train, y_train, pipeline, file_name)
 
