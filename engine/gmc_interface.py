@@ -603,7 +603,7 @@ def generate_roc(cv, x_train, y_train, pipeline, file_name):
     global_control.plots['test_texts'].append(str(pipeline))
     global_control.plots['test'].append(pngImageB64String)
 
-    plt.show()
+    # plt.show()
 
 
 def start_test_thread(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=13, show_roc=True,
