@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import re
 import threading
 import traceback
 from datetime import datetime
@@ -13,6 +14,29 @@ from timeit import default_timer as timer
 import numpy as np
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+
+# DO NOT REMOVE - those imports are used byc exec to convert TPOT pipeline to Pipeline-steps format
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Binarizer, PowerTransformer, \
+    QuantileTransformer
+from sklearn.naive_bayes import BernoulliNB, GaussianNB
+from sklearn.svm import LinearSVC, NuSVC
+from sklearn.neighbors import NearestCentroid
+from sklearn.ensemble import GradientBoostingClassifier, BaggingClassifier, AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier, ExtraTreeClassifier
+from sklearn.linear_model import PassiveAggressiveClassifier, RidgeClassifier, SGDClassifier, \
+    Perceptron
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.neural_network import MLPClassifier
+from xgboost import XGBClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import FastICA, PCA
+from sklearn.ensemble import ExtraTreesClassifier
+from tpot.builtins import StackingEstimator
 
 
 def adjust_dataset(dataframe):
@@ -57,11 +81,23 @@ def save_results_gmc(population, pipe, subfolder):
         pickle.dump(pipe, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
+global pipe
+
+
 def save_results_tpot(subfolder):
     os.makedirs(os.path.join('results', subfolder), exist_ok=True)
+    global_control.tpot.export(os.path.join('results', subfolder, 'best_pipeline.py'))
+
+    # with file name tpot will safe to file, without it, it will return string
+    to_write = global_control.tpot.export('')
+    to_write = [to_write.replace("\r\n", "").replace("  ", "").replace("\n", "") for x in to_write]
+    make_pipeline_string = re.search('exported_pipeline = (.+?)#', to_write[0]).group(1)
+
+    exec('global pipe; pipe=' + make_pipeline_string)
+
     summary = {'dataset_name': global_control.tpot_status['dataset_name'], 'cv': global_control.tpot_status['cv'],
                'tool': 'TPOT', 'score': global_control.tpot_status['best_score'],
-               'pipe_string': str(global_control.tpot_status["pipeline"]),
+               'pipe_string': str(pipe),
                'train_set_rows': global_control.tpot_status['train_set_rows'],
                'train_set_attributes': global_control.tpot_status['train_set_attributes'],
                'decision_classes': global_control.tpot_status['decision_classes'],
@@ -70,9 +106,7 @@ def save_results_tpot(subfolder):
         pickle.dump(summary, handle, protocol=pickle.HIGHEST_PROTOCOL)
         os.makedirs(os.path.join('results', subfolder), exist_ok=True)
     with open(os.path.join('results', subfolder, 'best_pipeline.pickle'), 'wb') as handle:
-        pickle.dump(global_control.tpot_status["pipeline"], handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    global_control.tpot.export(os.path.join('results', subfolder, 'best_pipeline.py'))
+        pickle.dump(pipe, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def save_genome(gen, subfolder):
@@ -166,6 +200,7 @@ def update_plot(population):
             for update
             TPOT is probably using some form of elitism or maybe even shuffles constantly among historically best.
     """
+
 
 def update_plot_tpot(tpot_individuals):
     bests = []
@@ -341,6 +376,7 @@ def keys(item):
 
 def values(item):
     return [i for i in item.__dict__.values()]
+
 
 def avgScore(scores):
     suma = 0

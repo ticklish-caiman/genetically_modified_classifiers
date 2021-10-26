@@ -249,7 +249,21 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population for {file_name}'
     global_control.tpot_status['best_score'] = 0.0
+    global_control.tpot_status['random_state'] = random_state
+    global_control.tpot_status['dataset_name'] = file_name
+    global_control.tpot_status['cv'] = cv
+    global_control.tpot_status['train_set_rows'] = x_train.shape[0]
+    global_control.tpot_status['train_set_attributes'] = x_train.shape[1]
+    global_control.tpot_status['decision_classes'] = len(np.unique(y_train))
+    start = datetime.now()
     global_control.tpot.fit(x_train, y_train)
+
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + ':</date> TPOT finished'
+    global_control.tpot_status['time'] = datetime.now() - start
+
+    subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
+    save_results_tpot(subfolder_name)
 
     log.info('Tpot finished')
     global_control.machine_info['free_threads'] += n_jobs
@@ -321,7 +335,6 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
 def run_tpot(file_name, x_train, y_train, n_jobs, cv, random_state):
     global_control.tpot_status['status'] = '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing TPOT ({file_name})'
-    global_control.tpot_status['best_score'] = 0.0
     global_control.tpot_status['dataset_name'] = file_name
     global_control.tpot_status['cv'] = cv
     global_control.tpot_status['train_set_rows'] = x_train.shape[0]
@@ -439,7 +452,7 @@ def load_best_pipelines():
     except FileNotFoundError:
         log.info('No results folder')
         return
-    print(sub_folders)
+    # print(sub_folders)
     for folder in sub_folders:
         try:
             with open(os.path.join(folder, 'best_pipeline_summary.pickle'), 'rb') as handle:
@@ -447,7 +460,7 @@ def load_best_pipelines():
         except (FileNotFoundError, EOFError):
             log.error(f'Result file empty or corrupted')
             continue
-    print(f'{pipelines=}')
+    # print(f'{pipelines=}')
     return pipelines
 
 
@@ -479,12 +492,15 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
     features = dataset.drop('class', axis=1).values
     x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=test_size,
                                                         random_state=int(random_state))
+
     for pipeline in global_control.PIPELINES:
         for p in pipelines:
-            p = [p.replace("\r\n", "").replace("  ", "") for x in p]
+            p_string = [p.replace("\r\n", "").replace("  ", "") for x in p]
             pip_string = str(pipeline)
             pip_string = [pip_string.replace("\n", "").replace("  ", "") for x in pip_string]
-            if p[0] == pip_string[0]:
+            if p_string[0] == pip_string[0]:
+                if hasattr(pipeline, 'random_state'):
+                    setattr(pipeline, 'random_state', int(random_state))
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Testing: {pipeline}"
                 cv_score = cross_val_score(pipeline, x_train, y_train, cv=10, n_jobs=4, error_score="raise")
@@ -497,6 +513,7 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Test score: {test_score}"
                 if show_roc:
                     generate_roc(cv, x_train, y_train, pipeline, file_name)
+                break
 
     global_control.machine_info['free_threads'] += n_jobs
     log.info('TEST finished')
