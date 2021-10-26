@@ -15,7 +15,7 @@ import numpy as np
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-# DO NOT REMOVE - those imports are used byc exec to convert TPOT pipeline to Pipeline-steps format
+# DO NOT REMOVE - those imports are used by exec to convert TPOT pipeline to Pipeline-steps format
 from sklearn.pipeline import make_pipeline, make_union
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Binarizer, PowerTransformer, \
     QuantileTransformer
