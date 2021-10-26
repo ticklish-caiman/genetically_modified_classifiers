@@ -16,7 +16,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 # DO NOT REMOVE - those imports are used byc exec to convert TPOT pipeline to Pipeline-steps format
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import make_pipeline, make_union
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Binarizer, PowerTransformer, \
     QuantileTransformer
 from sklearn.naive_bayes import BernoulliNB, GaussianNB
@@ -261,8 +261,9 @@ def update_plot_tpot(tpot_individuals):
 
     draw_plot_tpot()
 
-    if global_control.stop_tpot:
-        global_control.tpot.max_time_mins = 1
+    if global_control.tpot.max_time_mins != 1:
+        if global_control.stop_tpot:
+            global_control.tpot.max_time_mins = 1
 
 
 def draw_plot_tpot():
