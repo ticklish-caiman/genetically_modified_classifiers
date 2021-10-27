@@ -98,7 +98,7 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
                       random_state=13, selection_type='roulette', crossover_rate=0.1, early_stop=50,
                       pipeline_time_limit=120,
                       preselection=None, cv=10, cross_method='average', mutation=0.2, mutation_power=1.0,
-                      grid='GMC-big', fresh_blood=True):
+                      grid='GMC-big', fresh_blood=True, partial_explore=0.0):
     try:
         dataset = pd.read_csv('data-CSV/' + file_name, delimiter=',')
     except FileNotFoundError:
@@ -117,12 +117,29 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
                       crossover_rate=crossover_rate, cross_method=cross_method, early_stop=early_stop,
                       n_jobs=n_jobs, pipeline_time_limit=pipeline_time_limit, preselection=preselection,
                       dataset_name=file_name, grid_type=grid, mutation_rate=mutation, mutation_power=mutation_power,
-                      fresh_blood_mode=fresh_blood)
+                      fresh_blood_mode=fresh_blood, partial_explore=partial_explore)
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
     save_results_gmc(pop1, pop1.individuals[0].pipeline, subfolder_name)
     save_genome(pop1.individuals[0].genome, subfolder_name)
     log.info('GMC finished')
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> CV average score:{global_control.status["best_score"]}'
+    if partial_explore != 0.0:
+        global_control.status['status'] += f'(on {partial_explore} of original data). Please wait for full CV results...'
+        try:
+            cv = cross_val_score(pop1.individuals[0].pipeline, x_train, y_train, cv=cv)
+            global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+                "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV results: {cv} Average: {sum(cv) / len(cv)}'
+        except (TypeError, ValueError) as e:
+            global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+                "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV failed.'
+            print(e)
+    test_score = pop1.individuals[0].pipeline.fit(x_train, y_train).score(x_test, y_test)
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> Test score:{test_score}'
+
     global_control.machine_info['free_threads'] += n_jobs
+
     return pop1
 
 
@@ -131,7 +148,7 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
                    random_state=13, selection_type='roulette', crossover_rate=0.1, early_stop=50,
                    pipeline_time_limit=120,
                    preselection=None, cv=10, cross_method='average', mutation=0.2, mutation_power=1., grid='GMC-big',
-                   fresh_blood=True):
+                   fresh_blood=True, partial_explore=0):
     # threading will only use one-thread in pure code, but sklearn will use n_jobs and multithreading
     running_threads = []
     for thread in threading.enumerate():
@@ -152,6 +169,10 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
     if isinstance(mutation_power, int):
         mutation_power = mutation_power / 100
     log.info(f'{mutation_power=}')
+
+    if isinstance(partial_explore, int):
+        partial_explore = partial_explore / 100
+    log.info(f'{partial_explore=}')
 
     if isinstance(cross_method, int):
         if cross_method == 0:
@@ -206,13 +227,16 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
         "%d.%m.%Y|%H-%M-%S") + f":</date> Preselection: {preselection}."
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Dropping {partial_explore} of original dataset to improve performance."
 
     gmc_thread = threading.Thread(target=run_evolve_custom, name="gmc_thread",
                                   args=(file_name, validation_size, n_jobs, population, generations,
                                         elitism,
                                         random_state, selection_type, crossover_rate, early_stop,
                                         pipeline_time_limit,
-                                        preselection, cv, cross_method, mutation, mutation_power, grid, fresh_blood))
+                                        preselection, cv, cross_method, mutation, mutation_power, grid, fresh_blood,
+                                        partial_explore))
     if n_jobs <= global_control.machine_info['free_threads']:
         # If we want the app to keep running, even when webapp gets reloaded we should use Process instead of Thread
         # gmc_thread = Process(target=run_evolve, args=(x_train, y_train), name="gmc_process")

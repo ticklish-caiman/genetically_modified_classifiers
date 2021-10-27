@@ -60,6 +60,11 @@ def main():
         else:
             selected_grid = gmc_interface.grids[0]
 
+        if 'partial_explore' in global_control.last_selections:
+            chosen_partial = global_control.last_selections['partial_explore']
+        else:
+            chosen_partial = 0
+
         selected_pop_size = global_control.last_selections_gmc['pop_size']
         selected_gen_size = global_control.last_selections_gmc['gen_size']
         selected_elitism = global_control.last_selections_gmc['elitism']
@@ -83,7 +88,8 @@ def main():
                  'selection_method': selected_selection_method, 'early_stop': selected_early_stop,
                  'pipe_time': selected_pipe_time, 'mutation': selected_mutation,
                  'mutation_power': selected_mutation_power, 'random_state': selected_random_state,
-                 'grid': selected_grid, 'preselection': preselection, 'fresh_genes': fresh_genes}
+                 'grid': selected_grid, 'preselection': preselection, 'fresh_genes': fresh_genes,
+                 'partial_explore': chosen_partial}
         return render_template('gmc.html', datasets=gmc_interface.datasets, grids=gmc_interface.grids,
                                free_threads=global_control.machine_info['free_threads'], state=state)
 
@@ -216,6 +222,7 @@ def main():
             mutation_power = int(request.form['mutation_power'])
             pipeline_time_limit = int(request.form['pipe_time']) * 60
             grid = request.form['grids']
+            partial_explore = int(request.form['partial_explore'])
 
             global_control.last_selections_gmc['pop_size'] = pop_size
             global_control.last_selections_gmc['gen_size'] = generations
@@ -230,7 +237,7 @@ def main():
             global_control.last_selections_gmc['mutation_power'] = mutation_power
             global_control.last_selections_gmc['pipe_time'] = request.form['pipe_time']
             global_control.last_selections_gmc['validation_part'] = validation_size
-
+            global_control.last_selections['partial_explore'] = partial_explore
             try:
                 preselection = request.form["preselection"]
             except KeyError:
@@ -253,7 +260,7 @@ def main():
                                          selection_type=selection_type, mutation=mutation,
                                          mutation_power=mutation_power, pipeline_time_limit=pipeline_time_limit,
                                          preselection=preselection, elitism=elitism, random_state=random_state,
-                                         grid=grid, fresh_blood=fresh_blood)
+                                         grid=grid, fresh_blood=fresh_blood, partial_explore=partial_explore)
             return redirect('/gmc')
 
     @app.route('/custom_tpot_run', methods=["GET", "POST"])

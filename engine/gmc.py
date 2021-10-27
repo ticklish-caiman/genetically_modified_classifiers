@@ -23,7 +23,7 @@ from global_control import init_stop_threads
 from utils import update_progress, update_hall_of_fame, update_status, update_plot, get_best_from_list, \
     update_progress_nohof
 
-from sklearn.model_selection import cross_val_score, LeaveOneOut, RandomizedSearchCV, ParameterGrid
+from sklearn.model_selection import cross_val_score, LeaveOneOut, RandomizedSearchCV, ParameterGrid, train_test_split
 
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Binarizer, PowerTransformer, \
@@ -137,7 +137,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
            early_stop=20,
            pipeline_time_limit=600, n_jobs=1,
            preselection=False, fresh_blood_mode=True, grid_type='GMC-big', mutation_rate=0.5,
-           mutation_power=1.0) -> Population:
+           mutation_power=1.0, partial_explore=0.0) -> Population:
     set_max_n_components(x_train, validation_method)
     set_random_state(random_state)
     set_time_limits(pipeline_time_limit, generations)
@@ -149,6 +149,10 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     log.info(f'MAX_N_COMPONENTS was set to: {MAX_N_COMPONENTS}')
     log.info(f'TIME_LIMIT_POPULATION was set to: {TIME_LIMIT_GENERATION}')
     log.info(f'TIME_LIMIT_PIPELINE was set to: {TIME_LIMIT_PIPELINE}')
+
+    if partial_explore != 0.0:
+        x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=partial_explore,
+                                                            random_state=13)
     backup_data(x_train, y_train)
 
     if early_stop != 0 and early_stop < 4:

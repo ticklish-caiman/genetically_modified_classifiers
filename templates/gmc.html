@@ -118,29 +118,38 @@
                     <input name="preselection" type="checkbox" value="True"
                            {% if state['preselection'] %}checked{% endif %}>
 
-                 <div class="column">
-                    <hr>
-                    <div style="text-align: right">
-                        Allow fresh genes: <label class="tip" type="checkbox"
-                                                  title='Works with early stop - if algorithm will be close to stopping new individuals will be generated'></label>
-                        {#   value="True" -> otherwise input will return 'on' instead od True             #}
-                        <input name="fresh_blood" type="checkbox" value="True"
-                               {% if state['fresh_genes'] %}checked{% endif %}>
+                    <div class="column">
                         <hr>
-                        Random state: <input type="number"
-                                             name="random_state"
-                                             style="width: 60px"
-                                             min="1"
-                                             max="100000"
-                                             value={{ state['random_state'] }}
-                                             step="1"
-                                             class="slider"
-                                             title='Important for reproducibility.'><br/>
+                        <div style="text-align: right">
+                            Allow fresh genes: <label class="tip" type="checkbox"
+                                                      title='Works with early stop - if algorithm will be close to stopping new individuals will be generated'></label>
+                            {#   value="True" -> otherwise input will return 'on' instead od True             #}
+                            <input name="fresh_blood" type="checkbox" value="True"
+                                   {% if state['fresh_genes'] %}checked{% endif %}>
+                            <hr>
+                            Random state: <input type="number"
+                                                 name="random_state"
+                                                 style="width: 60px"
+                                                 min="1"
+                                                 max="100000"
+                                                 value={{ state['random_state'] }}
+                                                         step="1"
+                                                 class="slider"
+                                                 title='Important for reproducibility.'><br/>
+                            <hr>
+                        </div>
+                        <div style="text-align: right">
+                            Partial training:<span id="partial_explore"></span>%
+                            </br>
+                            <input type="range" name="partial_explore" style="width: auto"
+                                   min="0" max="99" value="{{ state['partial_explore'] }}"
+                                   class="slider" id="partial_explore_gmc"
+                                   title="What percentage of learning dataset will be dropped for better performance">
+                            <hr>
+                        </div>
+                        <input class="evo" type="submit" value="START EVOLUTION" style="height: 80px">
                         <hr>
                     </div>
-                    <input class="evo" type="submit" value="START EVOLUTION" style="height: 80px">
-                    <hr>
-                </div>
                 </div>
             </div>
         </form>
@@ -291,6 +300,14 @@
 
         slider13.oninput = function () {
             output13.innerHTML = this.value;
+        }
+
+        var slider14 = document.getElementById("partial_explore_gmc");
+        var output14 = document.getElementById("partial_explore");
+        output14.innerHTML = slider14.value;
+
+        slider14.oninput = function () {
+            output14.innerHTML = this.value;
         }
 
     </script>
