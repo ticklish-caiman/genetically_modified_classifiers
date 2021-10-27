@@ -311,7 +311,8 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
         "%d.%m.%Y|%H-%M-%S") + f":</date> Random state: {random_state}."
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
-
+    global_control.init_tpot()
+    global_control.init_stop_tpot()
     global_control.tpot_thread = threading.Thread(target=run_tpot_custom, name="tpot_thread",
                                                   args=(file_name, validation_size, n_jobs, population, generations,
                                                         offspring,
@@ -344,6 +345,7 @@ def run_tpot(file_name, x_train, y_train, n_jobs, cv, random_state):
     global_control.tpot_status['best_score'] = 0.0
     start = datetime.now()
     global_control.init_tpot()
+    global_control.init_stop_tpot()
     print(f'{n_jobs=}')
     print(f'{int(n_jobs)=}')
     global_control.tpot = TPOTClassifier(cv=10, generations=1000, verbosity=2, population_size=50,
