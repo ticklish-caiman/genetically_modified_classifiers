@@ -191,10 +191,8 @@ def main():
             core_balance = request.form["cores_balance"]
             gmc_interface.start_evolution_simple(request.form.get('datasets'),
                                                  core_balance)
-            state = {'dataset': selected_dataset}
+            global_control.last_selections['dataset'] = selected_dataset
             return redirect('/simple')
-            return render_template("simple.html", datasets=gmc_interface.datasets,
-                                   cores=global_control.machine_info['logical_cores'], state=state)
 
     @app.route('/custom_gmc_run', methods=["GET", "POST"])
     def custom_gmc_run():
