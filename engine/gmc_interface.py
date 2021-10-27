@@ -66,9 +66,9 @@ def get_csv_data(file, row_limit, column_limit, adjust):
     return data
 
 
-def run_evolve(x_train, y_train, n_jobs, file_name, population=30, generations=500, validation_method=10, elitism=0,
-               random_state=13, selection_type='roulette', crossover_rate=0.1, early_stop=5, pipeline_time_limit=120,
-               preselection=None, cv=10, cross_method='average', mutation=0.2, mutation_power=1.0):
+def run_evolve(x_train, y_train, n_jobs, file_name, population=50, generations=1000, validation_method=10, elitism=5,
+               random_state=13, selection_type='roulette', crossover_rate=0.5, early_stop=100, pipeline_time_limit=120,
+               preselection=None, cross_method='average', mutation=0.5, mutation_power=1.0):
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population ({file_name})'
     global_control.status['best_score'] = 0.0
@@ -77,7 +77,7 @@ def run_evolve(x_train, y_train, n_jobs, file_name, population=30, generations=5
                       elitism=elitism, random_state=random_state, selection_type=selection_type,
                       crossover_rate=crossover_rate, early_stop=early_stop,
                       n_jobs=n_jobs, pipeline_time_limit=pipeline_time_limit, preselection=preselection,
-                      dataset_name=file_name, cv=cv, cross_method=cross_method, mutation=mutation,
+                      dataset_name=file_name, cross_method=cross_method, mutation_rate=mutation,
                       mutation_power=mutation_power)
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
     if elitism:
@@ -346,10 +346,10 @@ def run_tpot(file_name, x_train, y_train, n_jobs, cv, random_state):
     global_control.init_tpot()
     print(f'{n_jobs=}')
     print(f'{int(n_jobs)=}')
-    global_control.tpot = TPOTClassifier(cv=10, generations=50, verbosity=2, population_size=10,
-                                         offspring_size=10,
-                                         mutation_rate=0.9,
-                                         crossover_rate=0.1, early_stop=50, n_jobs=n_jobs,
+    global_control.tpot = TPOTClassifier(cv=10, generations=1000, verbosity=2, population_size=50,
+                                         offspring_size=45,
+                                         mutation_rate=0.5,
+                                         crossover_rate=0.5, early_stop=100, n_jobs=n_jobs,
                                          disable_update_check=True, random_state=13
                                          )
     running_threads = []
