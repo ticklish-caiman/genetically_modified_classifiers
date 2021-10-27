@@ -38,7 +38,10 @@ def main():
 
     @app.route('/simple', methods=["GET", "POST"])
     def simple():
-        selected_dataset = request.args.get('datasets', gmc_interface.datasets[0])
+        if 'dataset' in global_control.last_selections:
+            selected_dataset = global_control.last_selections['dataset']
+        else:
+            selected_dataset = gmc_interface.datasets[0]
         state = {'dataset': selected_dataset}
 
         return render_template('simple.html', datasets=gmc_interface.datasets, state=state,
@@ -186,10 +189,11 @@ def main():
         if request.method == "GET" or request.method == "POST":
             selected_dataset = request.form['datasets']
             core_balance = request.form["cores_balance"]
+            gmc_interface.start_evolution_simple(request.form.get('datasets'),
+                                                 core_balance)
             state = {'dataset': selected_dataset}
+            return redirect('/simple')
             return render_template("simple.html", datasets=gmc_interface.datasets,
-                                   selection=gmc_interface.start_evolution_simple(request.form.get('datasets'),
-                                                                                  core_balance),
                                    cores=global_control.machine_info['logical_cores'], state=state)
 
     @app.route('/custom_gmc_run', methods=["GET", "POST"])
