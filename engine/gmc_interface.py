@@ -129,7 +129,7 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
         try:
             cv = cross_val_score(pop1.individuals[0].pipeline, x_train, y_train, cv=cv)
             global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-                "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV results: {cv} Average: {sum(cv) / len(cv)}'
+                "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV results: {cv} <br/>Average: {sum(cv) / len(cv)}'
         except (TypeError, ValueError) as e:
             global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
                 "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV failed.'

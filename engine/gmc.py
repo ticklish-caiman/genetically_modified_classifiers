@@ -152,7 +152,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
 
     if partial_explore != 0.0:
         x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=partial_explore,
-                                                            random_state=13)
+                                                            random_state=random_state)
     backup_data(x_train, y_train)
 
     if early_stop != 0 and early_stop < 4:
