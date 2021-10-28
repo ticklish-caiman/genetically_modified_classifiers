@@ -86,6 +86,7 @@ class Population:
     dataset_rows: int = 0
     dataset_attributes: int = 0
     random_state: int = 13
+    partial_explore: int = 0.0
     notes: [str] = None
 
 
@@ -202,6 +203,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     log.debug(f'Class attribute variety {pop.dataset_classes=}')
     pop.dataset_rows = x_train.shape[0]
     pop.dataset_attributes = x_train.shape[1]
+    pop.partial_explore = partial_explore
 
     start = datetime.now()
     init_stop_threads()
