@@ -125,7 +125,7 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> CV average score:{global_control.status["best_score"]}'
     if partial_explore != 0.0:
-        global_control.status['status'] += f'(on {partial_explore} of original data). Please wait for full CV results...'
+        global_control.status['status'] += f'(on {1.0 - partial_explore} of original data). Please wait for full CV results...'
         try:
             cv = cross_val_score(pop1.individuals[0].pipeline, x_train, y_train, cv=cv)
             global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
