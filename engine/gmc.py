@@ -266,12 +266,15 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             fresh_pop.individuals.append(hall_of_fame)
             fresh_pop = test_population(pop, validation_method, x_train, y_train, grid_type)
             pop = fresh_pop
-            generation_best_score = get_best_from_list(pop.individuals).score
+            generation_best_individual = get_best_from_list(pop.individuals)
+            generation_best_score = generation_best_individual.score
             if generation_best_score <= best:
                 stop_counter -= 1
             else:
                 stop_counter = early_stop
                 best = generation_best_score
+                global_control.status['best_score'] = best
+                global_control.status['pipeline'] = generation_best_individual.pipeline
 
         log.info('Selection and crossover')
         pop, hall_of_fame = selection_and_crossover(population=pop, elitism=elitism, hall_of_fame=hall_of_fame,
@@ -279,7 +282,16 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                                                     crossover_method=cross_method, mutation_rate=mutation_rate,
                                                     mutation_power=mutation_power)
 
-        update_progress(progress, hall_of_fame, start)
+        generation_best_individual = get_best_from_list(pop.individuals)
+        generation_best_score = generation_best_individual.score
+        if generation_best_score <= best:
+            stop_counter -= 1
+        else:
+            stop_counter = early_stop
+            best = generation_best_score
+            global_control.status['best_score'] = best
+            global_control.status['pipeline'] = generation_best_individual.pipeline
+        update_progress(progress, start)
         if GUI:
             update_plot(pop)
 
@@ -290,6 +302,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     pop.history.append(pop.individuals)
     if GUI:
         update_status('Task finished')
+
     return pop
 
 
@@ -428,6 +441,7 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
             except OverflowError:
                 continue
             next_generation.individuals[x + elitism].pipeline = create_pipeline(genes)
+            next_generation.individuals[x + elitism].genome = genes
 
     return next_generation, hall_of_fame
 
@@ -442,12 +456,11 @@ def test_individual(population: Population, x: Individual, validation_method, x_
         for y in population.individuals:
             # if x.genome == y.genome and y.score is not None:
             # DeepDiff also returns what exactly didn't match
-            if y.score is not None and not DeepDiff(x.genome, y.genome, significant_digits=10):
+            if y.score is not None and not DeepDiff(x.genome, y.genome, get_deep_distance=True):
                 log.warning(
-                    f'Identical pipeline was already tested. If you get this message often - increase genes variety. \nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} ')
+                    f'Identical pipeline was already tested. If you get this message often - increase genes variety. \nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} \nGenes 1:{x.genome} \nGenes 2:{y.genome} ')
                 log.debug('Generating random individual')
-                # TODO sometimes different indv are treated as identical
-                print(f'{DeepDiff(x.genome, y.genome, significant_digits=10)=}')
+                # print(f'{DeepDiff(x.genome, y.genome, significant_digits=10)=}')
                 x = generate_random_individual(grid_type)
                 x.genome = create_genome(x.pipeline)
                 break

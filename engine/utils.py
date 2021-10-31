@@ -299,7 +299,7 @@ def draw_plot_tpot():
     global_control.tpot_status['plot'] = pngImageB64String
 
 
-def update_progress(progress: float, hall_of_fame: [], start: timer):
+def update_progress(progress: float, start: timer):
     status = '| Best score: ' + str(
         global_control.status['best_score']) + '| Pipeline:' + str(
         global_control.status['pipeline']) + '| Time: ' + str(
