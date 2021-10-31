@@ -20,8 +20,7 @@ import pandas as pd
 
 import global_control
 from global_control import init_stop_threads
-from utils import update_progress, update_hall_of_fame, update_status, update_plot, get_best_from_list, \
-    update_progress_nohof
+from utils import update_progress, update_hall_of_fame, update_status, update_plot, get_best_from_list
 
 from sklearn.model_selection import cross_val_score, LeaveOneOut, RandomizedSearchCV, ParameterGrid, train_test_split
 
@@ -212,6 +211,8 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
         if global_control.stop_threads:
             log.info('Task stopped - returning last population')
             update_status('Task stopped - returning last population')
+            # pop.individuals.sort(key=lambda x: x.score is not None, reverse=True)
+            init_stop_threads()
             return pop
         if GUI:
             update_status(f'Validating generation {i}/{generations}')
@@ -226,25 +227,25 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
         elif to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
             log.warning(f'Time limitation exceeded - generation {i} not tested')
             continue
-        if not hall_of_fame:
-            update_progress_nohof(progress, pop, start)
-            update_plot(pop)
-        log.debug('Updating history')
-        unique = list()
-        for individual in pop.individuals:
-            # be VERY carefully with objects on list!
-            # appending object to another list only links to it, operating on either changes both!
-            unique.append(copy.copy(individual))
-        for u in unique:
-            # don't store pipeline in history to safe memory
-            u.pipeline = None
-        pop.history.append(unique)
-        generation_best_score = get_best_from_list(pop.individuals).score
+        # unique = list()
+        # for individual in pop.individuals:
+        #     # be VERY carefully with objects on list!
+        #     # appending object to another list only links to it, operating on either changes both!
+        #     unique.append(copy.copy(individual))
+        # for u in unique:
+        #     # don't store pipeline in history to safe memory
+        #     u.pipeline_string = str(u.pipeline)
+        #     u.pipeline = None
+        pop.history.append(pop.individuals)
+        generation_best_individual = get_best_from_list(pop.individuals)
+        generation_best_score = generation_best_individual.score
         if generation_best_score <= best:
             stop_counter -= 1
         else:
             stop_counter = early_stop
             best = generation_best_score
+            global_control.status['best_score'] = best
+            global_control.status['pipeline'] = generation_best_individual.pipeline
 
         if stop_counter < 1:
             log.info(f'Early stop! No change in {early_stop} generations')
@@ -277,10 +278,11 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                                                     selection_type=selection_type, crossover_rate=crossover_rate,
                                                     crossover_method=cross_method, mutation_rate=mutation_rate,
                                                     mutation_power=mutation_power)
+
+        update_progress(progress, hall_of_fame, start)
         if GUI:
-            if hall_of_fame:
-                update_progress(progress, hall_of_fame, start)
-                update_plot(pop)
+            update_plot(pop)
+
         log.info('Population size: ' + str(len(pop.individuals)))
     if GUI:
         update_status('Final validation')
@@ -444,6 +446,8 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 log.warning(
                     f'Identical pipeline was already tested. If you get this message often - increase genes variety. \nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} ')
                 log.debug('Generating random individual')
+                # TODO sometimes different indv are treated as identical
+                print(f'{DeepDiff(x.genome, y.genome, significant_digits=10)=}')
                 x = generate_random_individual(grid_type)
                 x.genome = create_genome(x.pipeline)
                 break
@@ -452,9 +456,12 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
             start = datetime.now()
             try:
+                if hasattr(x.pipeline, 'random_state'):
+                    setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
                 cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS,
                                      error_score="raise")
-            except (TypeError, ValueError) as e:
+                # print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}')
+            except (TypeError, ValueError) as e:  # TODO OverflowError: int too big to convert
                 population.failed_to_test.append(x)
                 log.error("FITTING ERROR - RESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
                 log.error(e.__class__)
@@ -464,6 +471,8 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 x = generate_random_individual(grid_type)
                 start = datetime.now()
                 try:
+                    if hasattr(x.pipeline, 'random_state'):
+                        setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
                     cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
                 except (TypeError, ValueError) as e:
                     log.critical(
@@ -494,7 +503,8 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             log.info('Generating random individual')
             x = generate_random_individual(grid_type)
             x.genome = create_genome(x.pipeline)
-            x.pipeline.fit(x_train, y_train)
+            if hasattr(x.pipeline, 'random_state'):
+                setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
             cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
             x.validation_method = validation_method
             x.score = sum(cv) / len(cv)
@@ -502,7 +512,8 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             log.warning('Time limitation interrupted')
             x = generate_random_individual(grid_type)
             x.genome = create_genome(x.pipeline)
-            x.pipeline.fit(x_train, y_train)
+            if hasattr(x.pipeline, 'random_state'):
+                setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
             cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
             x.validation_method = validation_method
             x.score = sum(cv) / len(cv)
@@ -510,6 +521,7 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             print('Oh you called to_ctx_mgr.cancel() method within the block but it')
         else:
             print('That\'s not possible')
+
     return x, population
 
 
@@ -938,7 +950,7 @@ def mutate(genotype, mutation_rate, mutation_power):
                     # Bagging
                     'baggingclassifier__max_features',
                     # XGB
-                    'xgbclassifier__nthread',
+                    'xgbclassifier__nthread', 'xgbclassifier__n_jobs',
                     # The min_impurity_split parameter is deprecated ... Use the min_impurity_decrease parameter instead.
                     'randomforestclassifier__min_impurity_split', 'gradientboostingclassifier__min_impurity_split',
                     'extratreeclassifier__min_impurity_split', 'decisiontreeclassifier__min_impurity_split',

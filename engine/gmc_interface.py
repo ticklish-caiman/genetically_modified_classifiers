@@ -80,14 +80,9 @@ def run_evolve(x_train, y_train, n_jobs, file_name, population=50, generations=1
                       dataset_name=file_name, cross_method=cross_method, mutation_rate=mutation,
                       mutation_power=mutation_power)
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
-    if elitism:
-        save_results_gmc(pop1, pop1.individuals[0].pipeline, subfolder_name)
-        save_genome(pop1.individuals[0].genome, subfolder_name)
-    else:
-        best = pop.get_best_from_history(pop1.history, validation_method)
-        pop_with_all = pop.unpack_history(pop1)
-        save_results_gmc(pop_with_all, best.pipeline, subfolder_name)
-        save_genome(best.genome, subfolder_name)
+
+    # best = pop.get_best_from_history(pop1.history, validation_method)
+    save_results_gmc(pop1, subfolder_name)
     log.info('GMC finished')
 
     return pop1
@@ -119,22 +114,28 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
                       dataset_name=file_name, grid_type=grid, mutation_rate=mutation, mutation_power=mutation_power,
                       fresh_blood_mode=fresh_blood, partial_explore=partial_explore)
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
-    save_results_gmc(pop1, pop1.individuals[0].pipeline, subfolder_name)
-    save_genome(pop1.individuals[0].genome, subfolder_name)
+    # pop_with_all = pop.unpack_history(pop1)
+    save_results_gmc(pop1, subfolder_name)
+    # best = pop.get_best_from_history(pop1.history, cv)
+    # save_genome(best.genome, subfolder_name)
     log.info('GMC finished')
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> CV average score:{global_control.status["best_score"]}'
     if partial_explore != 0.0:
-        global_control.status['status'] += f'(on {1.0 - partial_explore} of original data). Please wait for full CV results...'
+        global_control.status[
+            'status'] += f'(on {1.0 - partial_explore} of original data). Please wait for full CV results...'
         try:
-            cv = cross_val_score(pop1.individuals[0].pipeline, x_train, y_train, cv=cv)
+            cv = cross_val_score(global_control.status['pipeline'], x_train, y_train, cv=cv)
             global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
                 "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV results: {cv} <br/>Average: {sum(cv) / len(cv)}'
         except (TypeError, ValueError) as e:
             global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
                 "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV failed.'
             print(e)
-    test_score = pop1.individuals[0].pipeline.fit(x_train, y_train).score(x_test, y_test)
+    global_control.status['pipeline'].fit(x_train, y_train)
+    #  TODO  File "build\daal4py_cy.pyx", line 20474, in _daal4py.svm_training.__cinit__
+    #  TODO OverflowError: int too big to convert
+    test_score = global_control.status['pipeline'].score(x_test, y_test)
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Test score:{test_score}'
 
@@ -519,6 +520,8 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
     x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=test_size,
                                                         random_state=int(random_state))
 
+    if not isinstance(cv, LeaveOneOut):
+        cv = int(cv)
     for pipeline in global_control.PIPELINES:
         for p in pipelines:
             p_string = [p.replace("\r\n", "").replace("  ", "") for x in p]
@@ -529,7 +532,8 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
                     setattr(pipeline, 'random_state', int(random_state))
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Testing: {pipeline}"
-                cv_score = cross_val_score(pipeline, x_train, y_train, cv=10, n_jobs=4, error_score="raise")
+                cv_score = cross_val_score(pipeline, x_train, y_train, cv=cv, n_jobs=n_jobs, error_score="raise")
+                # print(f'\n\nTesting:{pipeline}\n{sum(cv_score)/len(cv_score)=}\n{len(x_train)=}')
                 test_score = pipeline.fit(x_train, y_train).score(x_test, y_test)
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-validation: {cv_score}"

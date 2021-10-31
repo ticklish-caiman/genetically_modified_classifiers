@@ -17,8 +17,8 @@ from matplotlib.figure import Figure
 
 # DO NOT REMOVE - those imports are used by exec to convert TPOT pipeline to Pipeline-steps format
 from sklearn.pipeline import make_pipeline, make_union
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, Binarizer, PowerTransformer, \
-    QuantileTransformer
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, \
+    PowerTransformer, QuantileTransformer, Normalizer, Binarizer, scale, KernelCenterer, OneHotEncoder
 from sklearn.naive_bayes import BernoulliNB, GaussianNB
 from sklearn.svm import LinearSVC, NuSVC
 from sklearn.neighbors import NearestCentroid
@@ -63,22 +63,23 @@ import pickle as pickle
 
 # HIGHEST_PROTOCOL = smaller files.
 # maximum file_name size of pickle = 2GB. "I think the 2GB limit was removed with protocol=4"
-def save_results_gmc(population, pipe, subfolder):
+def save_results_gmc(population, subfolder):
     os.makedirs(os.path.join('results', subfolder), exist_ok=True)
     with open(os.path.join('results', subfolder, 'population.pickle'), 'wb') as handle:
         pickle.dump(population, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    best_individual = get_best_from_list(population.individuals)
+    # best_individual = get_best_from_list(population.individuals)
     log.debug(f'Passed dataset: {population.dataset_name=}')
-    summary = {'dataset_name': population.dataset_name, 'cv': best_individual.validation_method,
-               'tool': 'GMC', 'score': best_individual.score,
-               'pipe_string': best_individual.pipeline_string, 'train_set_rows': population.dataset_rows,
+    print(f"{global_control.status['pipeline']=}")
+    summary = {'dataset_name': population.dataset_name, 'cv': population.individuals[0].validation_method,
+               'tool': 'GMC', 'score': global_control.status['best_score'],
+               'pipe_string': global_control.status['pipeline'], 'train_set_rows': population.dataset_rows,
                'train_set_attributes': population.dataset_attributes,
                'decision_classes': population.dataset_classes, 'random_state': population.random_state}
     with open(os.path.join('results', subfolder, 'best_pipeline_summary.pickle'), 'wb') as handle:
         pickle.dump(summary, handle, protocol=pickle.HIGHEST_PROTOCOL)
         os.makedirs(os.path.join('results', subfolder), exist_ok=True)
     with open(os.path.join('results', subfolder, 'best_pipeline.pickle'), 'wb') as handle:
-        pickle.dump(pipe, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(global_control.status['pipeline'], handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 global pipe
@@ -171,7 +172,7 @@ def update_plot(population):
     fig.set_figwidth(6.4)
 
     axis = fig.add_subplot(1, 1, 1)
-    axis.set_title('G_M_C')
+    axis.set_title('G-M-C')
     axis.set_xlabel("Generation")
     axis.set_ylabel("Score")
     axis.grid()
@@ -299,20 +300,13 @@ def draw_plot_tpot():
 
 
 def update_progress(progress: float, hall_of_fame: [], start: timer):
-    # after completing 10% of the task - display short summary
-    # print("Progress", progress)
-    # print('int(progress) % 10: '+str(int(progress) % 3))
-    # globals.initialize_status()
-    # global status
-    if hall_of_fame:
-        status = '| Best score: ' + str(
-            hall_of_fame[0].score) + '| Pipeline:' + str(
-            hall_of_fame[0].pipeline) + '| Time: ' + str(
-            datetime.now() - start)
-        global_control.status['best_score'] = hall_of_fame[0].score
-        global_control.status['pipeline'] = hall_of_fame[0].pipeline
-        global_control.status['time'] = datetime.now() - start
-        # rounding up for less glitchy of progress bar
+    status = '| Best score: ' + str(
+        global_control.status['best_score']) + '| Pipeline:' + str(
+        global_control.status['pipeline']) + '| Time: ' + str(
+        datetime.now() - start)
+
+    global_control.status['time'] = datetime.now() - start
+    # rounding up for less glitchy of progress bar
     progress_bar = '{0}{1}{2} {3}%'.format(
         '▓' * math.ceil(progress), '▒', '░' * math.ceil((100 - progress)), "%.2f" % progress)
     global_control.status['progress_bar'] = progress_bar
@@ -322,26 +316,23 @@ def update_progress(progress: float, hall_of_fame: [], start: timer):
         sys.stderr.write('\r' + progress_bar)
 
 
-def update_progress_nohof(progress: float, population: [], start: timer):
-    if population:
-        best = get_best_from_list(population.individuals)
-        status = '| Best score: ' + str(
-            best.score) + '| Pipeline:' + str(
-            best.pipeline) + '| Time: ' + str(
-            datetime.now() - start)
-        if global_control.status['best_score'] < best.score:
-            global_control.status['best_score'] = best.score
-            log.debug(f'{global_control.status["best_score"]= }')
-            global_control.status['pipeline'] = best.pipeline
-        global_control.status['time'] = datetime.now() - start
-
-    progress_bar = '{0}{1}{2} {3}%'.format(
-        '▓' * math.ceil(progress), '▒', '░' * math.ceil((100 - progress)), "%.2f" % progress)
-    global_control.status['progress_bar'] = progress_bar
-    if progress > 10 and int(progress) % 3 == 0:
-        sys.stderr.write('\n' + status + '\n')
-    else:
-        sys.stderr.write('\r' + progress_bar)
+# def update_progress_nohof(progress: float, population: [], start: timer):
+#
+#     status = '| Best score: ' + str(
+#         global_control.status['best_score']) + '| Pipeline:' + str(
+#         global_control.status['pipeline']) + '| Time: ' + str(
+#         datetime.now() - start)
+#
+#     global_control.status['time'] = datetime.now() - start
+#
+#
+#     progress_bar = '{0}{1}{2} {3}%'.format(
+#         '▓' * math.ceil(progress), '▒', '░' * math.ceil((100 - progress)), "%.2f" % progress)
+#     global_control.status['progress_bar'] = progress_bar
+#     if progress > 10 and int(progress) % 3 == 0:
+#         sys.stderr.write('\n' + status + '\n')
+#     else:
+#         sys.stderr.write('\r' + progress_bar)
 
 
 def update_status(status: str):

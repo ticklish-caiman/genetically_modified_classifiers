@@ -144,7 +144,10 @@ def main():
     @app.route('/test')
     def test():
         gmc_interface.unpickle_pipelines()
-        selected_pipe = global_control.PIPELINES[0]
+        try:
+            selected_pipe = global_control.PIPELINES[0]
+        except IndexError:
+            selected_pipe = 'No Pipelines to display'
 
         if 'dataset' in global_control.last_selections:
             selected_dataset = global_control.last_selections['dataset']
