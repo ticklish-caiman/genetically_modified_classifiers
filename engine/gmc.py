@@ -282,16 +282,6 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                                                     crossover_method=cross_method, mutation_rate=mutation_rate,
                                                     mutation_power=mutation_power)
 
-        generation_best_individual = get_best_from_list(pop.individuals)
-        generation_best_score = generation_best_individual.score
-        if generation_best_score <= best:
-            # stop_counter -= 1
-            None
-        else:
-            stop_counter = early_stop
-            best = generation_best_score
-            global_control.status['best_score'] = best
-            global_control.status['pipeline'] = generation_best_individual.pipeline
         update_progress(progress, start)
         if GUI:
             update_plot(pop)
