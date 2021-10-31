@@ -285,7 +285,8 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
         generation_best_individual = get_best_from_list(pop.individuals)
         generation_best_score = generation_best_individual.score
         if generation_best_score <= best:
-            stop_counter -= 1
+            # stop_counter -= 1
+            None
         else:
             stop_counter = early_stop
             best = generation_best_score
