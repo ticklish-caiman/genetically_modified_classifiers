@@ -467,7 +467,7 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 # print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}')
             except (TypeError, ValueError) as e:  # TODO OverflowError: int too big to convert
                 population.failed_to_test.append(x)
-                log.error("FITTING ERROR - RESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
+                log.error(f"FITTING ERROR\n{x.pipeline}\nRESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
                 log.error(e.__class__)
                 log.error(e)
                 x_train = ORIGINAL_X_TRAIN.copy()

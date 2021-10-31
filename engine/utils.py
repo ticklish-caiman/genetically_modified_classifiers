@@ -36,7 +36,8 @@ from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.decomposition import FastICA, PCA
 from sklearn.ensemble import ExtraTreesClassifier
-from tpot.builtins import StackingEstimator
+from tpot.builtins import StackingEstimator, ZeroCount, CombineDFs, auto_select_categorical_features, \
+    _transform_selected, CategoricalSelector, ContinuousSelector, FeatureSetSelector
 
 
 def adjust_dataset(dataframe):
@@ -190,17 +191,18 @@ def update_plot(population):
     pngImageB64String += base64.b64encode(pngImage.getvalue()).decode('utf8')
     global_control.status['plot'] = pngImageB64String
 
-    """
-        For better performance we may track how many scores (one each generation) was captured, unfortunately with
-            periodical refreshing we may skip some generations!
-        Alternative version could take advantage from the fact that the original tpot_individuals if enumerated will 
-            give individuals sorted by generations
-            ---------------------------------------------------------------------------------------------------------
-            TPOT.evaluated_individuals_ returns various number of individuals (I think it's throwing out worst
-            individuals) otherwise it would be possible to check if first/last generation is fully tested gather data
-            for update
-            TPOT is probably using some form of elitism or maybe even shuffles constantly among historically best.
-    """
+
+"""
+    For better performance we may track how many scores (one each generation) was captured, unfortunately with
+        periodical refreshing we may skip some generations!
+    Alternative version could take advantage from the fact that the original tpot_individuals if enumerated will 
+        give individuals sorted by generations
+        ---------------------------------------------------------------------------------------------------------
+        TPOT.evaluated_individuals_ returns various number of individuals (I think it's throwing out worst
+        individuals) otherwise it would be possible to check if first/last generation is fully tested gather data
+        for update
+        TPOT is probably using some form of elitism or maybe even shuffles constantly among historically best.
+"""
 
 
 def update_plot_tpot(tpot_individuals):
