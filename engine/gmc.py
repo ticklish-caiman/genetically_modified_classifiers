@@ -252,7 +252,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             update_status(f'Early stop! No change in {early_stop} generations')
             return pop
 
-        if stop_counter < early_stop // 2 and fresh_blood_mode:
+        if stop_counter <= early_stop // 2 and fresh_blood_mode:
             log.info(
                 f'Approaching early stop! Adding fresh blood')
             update_status(
@@ -269,7 +269,8 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             generation_best_individual = get_best_from_list(pop.individuals)
             generation_best_score = generation_best_individual.score
             if generation_best_score <= best:
-                stop_counter -= 1
+                # stop_counter -= 1
+                None
             else:
                 stop_counter = early_stop
                 best = generation_best_score
@@ -464,7 +465,7 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                     setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
                 cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS,
                                      error_score="raise")
-                # print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}')
+                print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}\n\n{x_train}')
             except (TypeError, ValueError) as e:  # TODO OverflowError: int too big to convert
                 population.failed_to_test.append(x)
                 log.error(f"FITTING ERROR\n{x.pipeline}\nRESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
