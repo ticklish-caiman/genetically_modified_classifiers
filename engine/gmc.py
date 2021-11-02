@@ -17,6 +17,7 @@ import cpuinfo
 import numpy as np
 import numpy.random.bit_generator
 import pandas as pd
+from stopit import TimeoutException
 
 import global_control
 from global_control import init_stop_threads
@@ -213,6 +214,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             update_status('Task stopped - returning last population')
             # pop.individuals.sort(key=lambda x: x.score is not None, reverse=True)
             init_stop_threads()
+            print(f"Stop requested, returning...\n{best=}\n{generation_best_individual.pipeline}")
             return pop
         if GUI:
             update_status(f'Validating generation {i}/{generations}')
@@ -246,21 +248,24 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             best = generation_best_score
             global_control.status['best_score'] = best
             global_control.status['pipeline'] = generation_best_individual.pipeline
+            print(f"New lider found...\n{best=}\n{generation_best_individual.pipeline}")
 
         if stop_counter < 1:
             log.info(f'Early stop! No change in {early_stop} generations')
             update_status(f'Early stop! No change in {early_stop} generations')
+            print(f"Stop counter triggered, returning...\n{best=}\n{generation_best_individual.pipeline}")
             return pop
 
         if stop_counter <= early_stop // 2 and fresh_blood_mode:
             log.info(
-                f'Approaching early stop! Adding fresh blood')
+                f'Approaching early stop! Adding fresh genes')
             update_status(
-                f'Approaching early stop! Adding fresh blood')
+                f'Approaching early stop! Adding fresh genes')
             fresh_pop = Population(individuals=[], history=pop.history, dataset_name=pop.dataset_name,
                                    dataset_rows=pop.dataset_rows,
                                    dataset_attributes=pop.dataset_attributes, dataset_classes=pop.dataset_classes,
-                                   random_state=RANDOM_STATE, failed_to_test=pop.failed_to_test)
+                                   random_state=RANDOM_STATE, failed_to_test=pop.failed_to_test,
+                                   slowpokes=pop.slowpokes)
             for x in range(len(pop.individuals) - len(hall_of_fame)):
                 fresh_pop.individuals.append(generate_random_individual(grid_type))
             fresh_pop.individuals.append(hall_of_fame)
@@ -276,6 +281,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                 best = generation_best_score
                 global_control.status['best_score'] = best
                 global_control.status['pipeline'] = generation_best_individual.pipeline
+                print(f"New-Fresh-lider found...\n{best=}\n{generation_best_individual.pipeline}")
 
         log.info('Selection and crossover')
         pop, hall_of_fame = selection_and_crossover(population=pop, elitism=elitism, hall_of_fame=hall_of_fame,
@@ -294,12 +300,12 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     pop.history.append(pop.individuals)
     if GUI:
         update_status('Task finished')
-
+    print(f"Generations limit reached, returning...\n{best=}\n{generation_best_individual.pipeline}")
     return pop
 
 
 def init_population(pop_size: int, grid_type: str):
-    pop = Population(individuals=[], history=[], failed_to_test=[])
+    pop = Population(individuals=[], history=[], failed_to_test=[], slowpokes=[])
     for x in range(pop_size):
         pop.individuals.append(generate_random_individual(grid_type))
         log.info('Individual generated: ' + str(pop.individuals[x].pipeline))
@@ -377,7 +383,7 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
     next_generation = Population(individuals=[], history=population.history, dataset_name=population.dataset_name,
                                  dataset_rows=population.dataset_rows, dataset_attributes=population.dataset_attributes,
                                  dataset_classes=population.dataset_classes, random_state=RANDOM_STATE,
-                                 failed_to_test=population.failed_to_test)
+                                 failed_to_test=population.failed_to_test, slowpokes=population.slowpokes)
     if 0 < elitism:
         # update HoF
         hall_of_fame = update_hall_of_fame(hall_of_fame, population.individuals, elitism)
@@ -439,8 +445,6 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
 
 
 def test_individual(population: Population, x: Individual, validation_method, x_train, y_train, grid_type):
-    if x.pipeline_string is None:
-        x.pipeline_string = str(x.pipeline)
     if x.genome is None:
         log.info('No genome found. Generating genome.')
         x.genome = create_genome(x.pipeline)
@@ -455,7 +459,9 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 # print(f'{DeepDiff(x.genome, y.genome, significant_digits=10)=}')
                 x = generate_random_individual(grid_type)
                 x.genome = create_genome(x.pipeline)
-                break
+                if hasattr(x.pipeline, 'random_state'):
+                    setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
+                return test_individual(population, x, validation_method, x_train, y_train, grid_type)
         log.debug('Passing pipeline to test:' + str(x.pipeline))
         with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
@@ -478,7 +484,7 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 try:
                     if hasattr(x.pipeline, 'random_state'):
                         setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-                    cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
+                    return test_individual(population, x, validation_method, x_train, y_train, grid_type)
                 except (TypeError, ValueError) as e:
                     log.critical(
                         'Critical error - unable to generate random individual')
@@ -488,6 +494,13 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 except Exception:
                     log.critical(
                         f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
+            except TimeoutException:
+                log.error(f'Timeout exception')
+                population.slowpokes.append(x)
+                x = generate_random_individual(grid_type)
+                if hasattr(x.pipeline, 'random_state'):
+                    setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
+                return test_individual(population, x, validation_method, x_train, y_train, grid_type)
             except Exception:
                 log.critical(
                     f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
@@ -497,35 +510,38 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 x.score = sum(cv) / len(cv)
             except UnboundLocalError:
                 log.critical(f'Cross-validation error - individual not tested:{x.pipeline}')
+                x.score = 0.0
 
             log.info(f'Pipeline {x.pipeline} \ntested in: {x.validation_time}, score:{x.score}')
+            print(f'Testing done... \n{x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
         if to_ctx_mgr.state == to_ctx_mgr.EXECUTED:
             log.info('Pipeline validation was successfull')
         elif to_ctx_mgr.state == to_ctx_mgr.EXECUTING:
             log.error('Time limitations error - executing was passed after execution')
         elif to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
             log.error(f'Time limitation exceeded, skipped pipeline: {x.pipeline}')
+            population.slowpokes.append(x)
             log.info('Generating random individual')
             x = generate_random_individual(grid_type)
-            x.genome = create_genome(x.pipeline)
             if hasattr(x.pipeline, 'random_state'):
                 setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-            cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
-            x.validation_method = validation_method
-            x.score = sum(cv) / len(cv)
+            return test_individual(population, x, validation_method, x_train, y_train, grid_type)
+
         elif to_ctx_mgr.state == to_ctx_mgr.INTERRUPTED:
             log.warning('Time limitation interrupted')
             x = generate_random_individual(grid_type)
             x.genome = create_genome(x.pipeline)
             if hasattr(x.pipeline, 'random_state'):
                 setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-            cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS)
-            x.validation_method = validation_method
-            x.score = sum(cv) / len(cv)
+            return test_individual(population, x, validation_method, x_train, y_train, grid_type)
         elif to_ctx_mgr.state == to_ctx_mgr.CANCELED:
             print('Oh you called to_ctx_mgr.cancel() method within the block but it')
         else:
             print('That\'s not possible')
+            x.score = 0.0
+
+        x.pipeline_string = str(x.pipeline)
+        print(f'Returning after test...\n {x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
 
     return x, population
 
@@ -535,7 +551,8 @@ def test_population(population: Population, validation_method, x_train, y_train,
                                    dataset_rows=population.dataset_rows,
                                    dataset_attributes=population.dataset_attributes,
                                    dataset_classes=population.dataset_classes,
-                                   random_state=RANDOM_STATE, failed_to_test=population.failed_to_test)
+                                   random_state=RANDOM_STATE, failed_to_test=population.failed_to_test,
+                                   slowpokes=population.slowpokes)
     log.info(f'Population size: {len(population.individuals)}')
     for x in population.individuals:
         x, population = test_individual(population, x, validation_method, x_train, y_train, grid_type)
@@ -555,6 +572,8 @@ def test_population(population: Population, validation_method, x_train, y_train,
         except (TypeError, ValueError):
             x.score = 0.0
             tested_population.individuals.append(x)
+            log.critical(
+                f'Critical error, individual not scored. Try increasing time limit or use less extreme grid')
 
     return validate_tested_population(tested_population)
 
@@ -565,16 +584,17 @@ def validate_tested_population(population: Population):
                                              dataset_rows=population.dataset_rows,
                                              dataset_attributes=population.dataset_attributes,
                                              dataset_classes=population.dataset_classes, random_state=RANDOM_STATE,
-                                             failed_to_test=population.failed_to_test)
+                                             failed_to_test=population.failed_to_test, slowpokes=population.slowpokes)
     for x in population.individuals:
         if isinstance(x.score, float):
             log.info('Individual verified, score:' + str(x.score))
             tested_population_validated.individuals.append(x)
         else:
             log.error(f'Individual validation failed: {x.pipeline}')
-    log.info(f'Average score of population:{average_score(population.individuals)}')
-    if GUI:
-        global_control.status['status'] += f' | last average:{average_score(population.individuals)}'
+    # log.info(f'Average score of population:{average_score(population.individuals)}')
+    # if GUI:
+    #     global_control.status[
+    #         'status'] += f' | average:{average_score(population.individuals)} | best:{global_control.status["best_score"]}'
     return tested_population_validated
 
 
@@ -805,6 +825,34 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
         else:
             log.debug('No common keys')
 
+    # To aviod "OverflowError: int too big to convert"
+    for key in g3:
+        if isinstance(g3[key], int):
+            if g3[key] > sys.maxsize:
+                g3[key] = sys.maxsize - 10
+
+    # values above ~2146000000 will cause "OverflowError: Python int too large to convert to C long"
+    if 'linearsvc__max_iter' in g3:
+        if g3['linearsvc__max_iter'] > 2146000000:
+            g3['linearsvc__max_iter'] = 2146000000
+
+    if 'logisticregression__max_iter' in g3:
+        if g3['logisticregression__max_iter'] > 2146000000:
+            g3['logisticregression__max_iter'] = 2146000000
+
+    # limit cache size to 8000 MB
+    if 'nusvc__cache_size' in g3:
+        if g3['nusvc__cache_size'] > 8000:
+            g3['nusvc__cache_size'] = 8000
+    if 'svc__cache_size' in g3:
+        if g3['svc__cache_size'] > 8000:
+            g3['svc__cache_size'] = 8000
+
+    # limit degree to 1000
+    if 'nusvc__degree' in g3:
+        if g3['nusvc__degree'] > 1000:
+            g3['nusvc__degree'] = 1000
+
     # print(f'Creating child from genome:{g3}')
     pipeline = create_pipeline(g3)
     # print(f'Created pipeline:{pipeline}')
@@ -1004,6 +1052,9 @@ def mutate(genotype, mutation_rate, mutation_power):
             else:
                 genotype[key] += int(genotype[key] * (np.random.uniform(-0.2, 0.2)) * mutation_amount)
                 continue
+            # To aviod "OverflowError: int too big to convert"
+            if genotype[key] > sys.maxsize:
+                genotype[key] = sys.maxsize - 10
 
     # drop random transformer
     if random.random() < mutation_rate / 10:
@@ -1019,11 +1070,29 @@ def mutate(genotype, mutation_rate, mutation_power):
             log.debug('Random transformer name:', random_name)
             genotype = add_transformer(random_name, genotype)
 
+    # values above ~2146000000 will cause "OverflowError: Python int too large to convert to C long"
+    if 'linearsvc__max_iter' in genotype:
+        if genotype['linearsvc__max_iter'] > 2146000000:
+            genotype['linearsvc__max_iter'] = 2146000000
+
+    if 'logisticregression__max_iter' in genotype:
+        if genotype['logisticregression__max_iter'] > 2146000000:
+            genotype['logisticregression__max_iter'] = 2146000000
+
+    # limit cache size to 8000 MB
+    if 'nusvc__cache_size' in genotype:
+        if genotype['nusvc__cache_size'] > 4000:
+            genotype['nusvc__cache_size'] = 4000
+    if 'svc__cache_size' in genotype:
+        if genotype['svc__cache_size'] > 4000:
+            genotype['svc__cache_size'] = 4000
+
+    # limit degree to 1000
+    if 'nusvc__degree' in genotype:
+        if genotype['nusvc__degree'] > 1000:
+            genotype['nusvc__degree'] = 1000
+
     return genotype
-
-
-def fitness(clf):
-    return 0
 
 
 def get_random_classifier():
