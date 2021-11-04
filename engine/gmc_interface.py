@@ -133,8 +133,6 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
                 "%d.%m.%Y|%H-%M-%S") + f':</date> Full CV failed.'
             print(e)
     global_control.status['pipeline'].fit(x_train, y_train)
-    #  TODO  File "build\daal4py_cy.pyx", line 20474, in _daal4py.svm_training.__cinit__
-    #  TODO OverflowError: int too big to convert
     test_score = global_control.status['pipeline'].score(x_test, y_test)
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Test score:{test_score}'
@@ -283,15 +281,15 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
     start = datetime.now()
     global_control.tpot.fit(x_train, y_train)
 
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + ':</date> TPOT finished'
     global_control.tpot_status['time'] = datetime.now() - start
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> TPOT finished in:{global_control.tpot_status["time"]}'
+    global_control.machine_info['free_threads'] += n_jobs
 
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
     save_results_tpot(subfolder_name)
 
     log.info('Tpot finished')
-    global_control.machine_info['free_threads'] += n_jobs
 
 
 def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, offspring=20, generations=1000,

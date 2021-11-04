@@ -1,19 +1,23 @@
 import base64
+import copy
 import io
 import os
 import re
-import threading
-import traceback
 from datetime import datetime
+from datetime import timedelta
 import math
 import sys
-# from functools import cache
 from operator import attrgetter
 from timeit import default_timer as timer
 
 import numpy as np
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+
+import global_control
+import pandas as pd
+import logging as log
+import pickle as pickle
 
 # DO NOT REMOVE - those imports are used by exec to convert TPOT pipeline to Pipeline-steps format
 from sklearn.pipeline import make_pipeline, make_union
@@ -39,6 +43,8 @@ from sklearn.ensemble import ExtraTreesClassifier
 from tpot.builtins import StackingEstimator, ZeroCount, CombineDFs, auto_select_categorical_features, \
     _transform_selected, CategoricalSelector, ContinuousSelector, FeatureSetSelector
 
+global pipe
+
 
 def adjust_dataset(dataframe):
     if 'Class' in dataframe.columns:
@@ -57,9 +63,6 @@ def adjust_dataset(dataframe):
                 mapping_data[v] = i
             dataframe[x] = dataframe[x].map(mapping_data)
     return dataframe
-
-
-import pickle as pickle
 
 
 # HIGHEST_PROTOCOL = smaller files.
@@ -81,9 +84,8 @@ def save_results_gmc(population, subfolder):
         os.makedirs(os.path.join('results', subfolder), exist_ok=True)
     with open(os.path.join('results', subfolder, 'best_pipeline.pickle'), 'wb') as handle:
         pickle.dump(global_control.status['pipeline'], handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-global pipe
+    with open(os.path.join('results', subfolder, 'generation_plot.png'), 'wb') as handle:
+        handle.write(global_control.status['plot_png'].getvalue())
 
 
 def save_results_tpot(subfolder):
@@ -109,6 +111,8 @@ def save_results_tpot(subfolder):
         os.makedirs(os.path.join('results', subfolder), exist_ok=True)
     with open(os.path.join('results', subfolder, 'best_pipeline.pickle'), 'wb') as handle:
         pickle.dump(pipe, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(os.path.join('results', subfolder, 'generation_plot.png'), 'wb') as handle:
+        handle.write(global_control.tpot_status['plot_png'].getvalue())
 
 
 def save_genome(gen, subfolder):
@@ -129,12 +133,6 @@ def generate_param_grid(transformers: []):
     return param_grid
 
 
-import global_control
-import pandas as pd
-from matplotlib import pyplot as plt
-import logging as log
-
-
 def get_best_from_list(indv=[]):
     if len(indv) == 0:
         log.warning("No individuals found")
@@ -142,29 +140,59 @@ def get_best_from_list(indv=[]):
     pop2 = []
     best = None
     for x in indv:
-        if x.validation_method is None:
+        if x.validation_method is None or x.score is None:
             log.warning("Individual ignored - not tested yet")
             continue
         pop2.append(x)
+
     if len(pop2) != 0:
         best = max(pop2, key=attrgetter('score'))
+    # best = max(indv, key=attrgetter('score'))
+    log.info(f'Returning best individual, pipe:{best.pipeline} score:{best.score}')
     return best
 
 
+# def get_best_from_list_tmp(indv=[]):
+#     return max(indv, key=attrgetter('score'))
+
+
 def average_score(individuals: []) -> float:
-    return sum(i.score for i in individuals) / len(individuals)
+    pop2 = []
+    for x in individuals:
+        if x.validation_method is None or x.score is None:
+            log.warning("Individual ignored - not tested yet")
+            continue
+        pop2.append(x)
+    return sum(i.score for i in pop2) / len(pop2)
+
+
+def average_time(individuals: []):
+    deltas = []
+    for x in individuals:
+        if x.validation_method is None or x.score is None or x.validation_time is None:
+            log.warning("Individual ignored - not tested yet")
+            continue
+        deltas.append(x.validation_time)
+    if len(deltas) > 0:
+        return sum(deltas, timedelta(0)) / len(deltas)
+    else:
+        return "No validated individuals."
 
 
 def update_plot(population):
-    besty = []
-    avgs = []
+    # old, slow version
+    # bests = []
+    # avgs = []
+    # for i, x in enumerate(population.history):
+    #     bests.append(get_best_from_list(x).score)
+    #     avgs.append(average_score(x))
 
-    # todo - optimize, global bests and avgs
-    for i, x in enumerate(population.history):
-        besty.append(get_best_from_list(x).score)
-        avgs.append(average_score(x))
+    global_control.status['scores'].append(get_best_from_list(population.individuals).score)
+    global_control.status['avgs'].append(average_score(population.individuals))
+    bests = global_control.status['scores']
+    avgs = global_control.status['avgs']
 
-    series = pd.Series(besty)
+    series = pd.Series(bests)
     series.plot()
     fig = Figure()
 
@@ -184,11 +212,12 @@ def update_plot(population):
                ncol=2, fancybox=True, shadow=True)
     """  https://gitlab.com/-/snippets/1924163 """
     # Convert plot to PNG image
-    pngImage = io.BytesIO()
-    FigureCanvas(fig).print_png(pngImage)
+    global_control.status['plot_png'] = io.BytesIO()
+    FigureCanvas(fig).print_png(global_control.status['plot_png'])
     # Encode PNG image to base64 string
     pngImageB64String = "data:image/png;base64,"
-    pngImageB64String += base64.b64encode(pngImage.getvalue()).decode('utf8')
+    pngImageB64String += base64.b64encode(global_control.status['plot_png'].getvalue()).decode('utf8')
+
     global_control.status['plot'] = pngImageB64String
 
 
@@ -291,13 +320,11 @@ def draw_plot_tpot():
     fig.legend(['Best', 'Average'], loc='upper right',
                ncol=2, fancybox=True, shadow=True)
     # Convert plot to PNG image
-    pngImage = io.BytesIO()
-    FigureCanvas(fig).print_png(pngImage)
-
+    global_control.tpot_status['plot_png'] = io.BytesIO()
+    FigureCanvas(fig).print_png(global_control.tpot_status['plot_png'])
     # Encode PNG image to base64 string
     pngImageB64String = "data:image/png;base64,"
-    pngImageB64String += base64.b64encode(pngImage.getvalue()).decode('utf8')
-
+    pngImageB64String += base64.b64encode(global_control.tpot_status['plot_png'].getvalue()).decode('utf8')
     global_control.tpot_status['plot'] = pngImageB64String
 
 
@@ -345,7 +372,10 @@ def update_status(status: str):
 # returns sorted and updated hall of fame and best individuals
 def update_hall_of_fame(hall_of_fame: list, individuals: list, elitism: int):
     all_ind = hall_of_fame + individuals
-    hall_of_fame = get_n_best(elitism, all_ind)
+    try:
+        hall_of_fame = get_n_best(elitism, all_ind)
+    except TypeError:
+        print('Critical error, unable to update hof')
     return hall_of_fame
 
 
@@ -354,7 +384,7 @@ def get_n_best(n: int, individuals: list):
 
     bests = []
     for i in range(n):
-        bests.append(individuals[i])
+        bests.append(copy.copy(individuals[i]))
     return bests
 
 

@@ -21,7 +21,7 @@ from stopit import TimeoutException
 
 import global_control
 from global_control import init_stop_threads
-from utils import update_progress, update_hall_of_fame, update_status, update_plot, get_best_from_list
+from utils import update_progress, update_hall_of_fame, update_status, update_plot, get_best_from_list, average_time
 
 from sklearn.model_selection import cross_val_score, LeaveOneOut, RandomizedSearchCV, ParameterGrid, train_test_split
 
@@ -146,6 +146,8 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     set_threads(n_jobs)
     set_selection(selection_type)
     set_preselection(preselection)
+    global_control.status['scores'] = []
+    global_control.status['avgs'] = []
 
     log.info(f'MAX_N_COMPONENTS was set to: {MAX_N_COMPONENTS}')
     log.info(f'TIME_LIMIT_POPULATION was set to: {TIME_LIMIT_GENERATION}')
@@ -214,7 +216,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             update_status('Task stopped - returning last population')
             # pop.individuals.sort(key=lambda x: x.score is not None, reverse=True)
             init_stop_threads()
-            print(f"Stop requested, returning...\n{best=}\n{generation_best_individual.pipeline}")
+            log.info(f"Stop requested, returning...\n{best=}\n{generation_best_individual.pipeline}")
             return pop
         if GUI:
             update_status(f'Validating generation {i}/{generations}')
@@ -229,18 +231,19 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
         elif to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
             log.warning(f'Time limitation exceeded - generation {i} not tested')
             continue
-        # unique = list()
-        # for individual in pop.individuals:
-        #     # be VERY carefully with objects on list!
-        #     # appending object to another list only links to it, operating on either changes both!
-        #     unique.append(copy.copy(individual))
-        # for u in unique:
-        #     # don't store pipeline in history to safe memory
-        #     u.pipeline_string = str(u.pipeline)
-        #     u.pipeline = None
-        pop.history.append(pop.individuals)
-        generation_best_individual = get_best_from_list(pop.individuals)
-        generation_best_score = generation_best_individual.score
+        unique = list()
+        for individual in pop.individuals:
+            # be VERY carefully with objects on list!
+            # appending object to another list only links to it, operating on either changes both!
+            unique.append(copy.copy(individual))
+        for u in unique:
+            # don't store pipeline in history to safe memory
+            u.pipeline_string = str(u.pipeline)
+            u.pipeline = None
+        pop.history.append(unique)
+        generation_best_individual = copy.copy(get_best_from_list(pop.individuals))
+        generation_best_score = copy.copy(generation_best_individual.score)
+        log.info(f"leader candidate...\n{best=}\n{generation_best_individual.pipeline}")
         if generation_best_score <= best:
             stop_counter -= 1
         else:
@@ -248,12 +251,13 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             best = generation_best_score
             global_control.status['best_score'] = best
             global_control.status['pipeline'] = generation_best_individual.pipeline
-            print(f"New lider found...\n{best=}\n{generation_best_individual.pipeline}")
+            log.info(f"New leader found...\n{best=}\n{generation_best_individual.pipeline}")
 
         if stop_counter < 1:
             log.info(f'Early stop! No change in {early_stop} generations')
             update_status(f'Early stop! No change in {early_stop} generations')
-            print(f"Stop counter triggered, returning...\n{best=}\n{generation_best_individual.pipeline}")
+            log.info(
+                f"\nStop counter triggered, returning...\n{global_control.status['best_score']}\n{global_control.status['pipeline']}")
             return pop
 
         if stop_counter <= early_stop // 2 and fresh_blood_mode:
@@ -271,7 +275,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             fresh_pop.individuals.append(hall_of_fame)
             fresh_pop = test_population(pop, validation_method, x_train, y_train, grid_type)
             pop = fresh_pop
-            generation_best_individual = get_best_from_list(pop.individuals)
+            generation_best_individual = copy.copy(get_best_from_list(pop.individuals))
             generation_best_score = generation_best_individual.score
             if generation_best_score <= best:
                 # stop_counter -= 1
@@ -281,7 +285,15 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                 best = generation_best_score
                 global_control.status['best_score'] = best
                 global_control.status['pipeline'] = generation_best_individual.pipeline
-                print(f"New-Fresh-lider found...\n{best=}\n{generation_best_individual.pipeline}")
+                log.info(f"New-Fresh-lider found...\n{best=}\n{generation_best_individual.pipeline}")
+
+        update_progress(progress, start)
+        if GUI:
+            update_plot(pop)
+            if 'time' in global_control.status:
+                #                                   print(f"{type(global_control.status['time'])=}")
+                update_status(
+                    f"Time elapsed:{global_control.status['time']}|Last generation average fitting time:{average_time(pop.individuals)}")
 
         log.info('Selection and crossover')
         pop, hall_of_fame = selection_and_crossover(population=pop, elitism=elitism, hall_of_fame=hall_of_fame,
@@ -289,18 +301,23 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                                                     crossover_method=cross_method, mutation_rate=mutation_rate,
                                                     mutation_power=mutation_power)
 
-        update_progress(progress, start)
-        if GUI:
-            update_plot(pop)
-
         log.info('Population size: ' + str(len(pop.individuals)))
     if GUI:
         update_status('Final validation')
     pop = test_population(pop, validation_method, x_train, y_train, grid_type)
     pop.history.append(pop.individuals)
+    generation_best_individual = copy.copy(get_best_from_list(pop.individuals))
+    generation_best_score = generation_best_individual.score
+    if generation_best_score <= best:
+        None
+    else:
+        best = generation_best_score
+        global_control.status['best_score'] = best
+        global_control.status['pipeline'] = generation_best_individual.pipeline
+        log.info(f"New leader found in last generation...\n{best=}\n{generation_best_individual.pipeline}")
     if GUI:
         update_status('Task finished')
-    print(f"Generations limit reached, returning...\n{best=}\n{generation_best_individual.pipeline}")
+    log.info(f"Generations limit reached, returning...\n{best=}\n{generation_best_individual.pipeline}")
     return pop
 
 
@@ -384,20 +401,9 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                                  dataset_rows=population.dataset_rows, dataset_attributes=population.dataset_attributes,
                                  dataset_classes=population.dataset_classes, random_state=RANDOM_STATE,
                                  failed_to_test=population.failed_to_test, slowpokes=population.slowpokes)
-    if 0 < elitism:
-        # update HoF
-        hall_of_fame = update_hall_of_fame(hall_of_fame, population.individuals, elitism)
-        log.debug(
-            'Add best individuals to new generation, scores:{scores}'.format(scores=[x.score for x in hall_of_fame]))
-        for b in hall_of_fame:
-            next_generation.individuals.append(b)
-        # for i in range(len(next_generation.individuals)):
-        #     print(next_generation.individuals[i].score)
 
-    # print(f'{crossover_rate=}')
-    # print(f'{crossover_method=}')
     # creating new generation
-    for x in range(len(population.individuals) - len(next_generation.individuals)):
+    for x in range(len(population.individuals) - elitism):
         # crossover with selection - add new individual to next_generation
         if crossover_rate > random.random():
             if selection_type == 'roulette':
@@ -431,20 +437,46 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
             if selection_type == 'tournament20':
                 next_generation.individuals.append(tournament(population.individuals, 20))
 
-    for x in range(len(next_generation.individuals) - elitism):
+    log.info(
+        'New generation, scores before mutation:{scores}'.format(scores=[x.score for x in next_generation.individuals]))
+
+    # for x in range(len(next_generation.individuals) - elitism):
+    for x, individual in enumerate(next_generation.individuals):
         if mutation_rate > random.random():
             try:
-                genes = mutate(create_genome(next_generation.individuals[x + elitism].pipeline), mutation_rate,
+                genes = mutate(create_genome(individual.pipeline), mutation_rate,
                                mutation_power)
             except OverflowError:
+                log.error('Too aggressive mutation, individual not mutated')
                 continue
-            next_generation.individuals[x + elitism].pipeline = create_pipeline(genes)
-            next_generation.individuals[x + elitism].genome = genes
+            individual.pipeline = create_pipeline(genes)
+            individual.genome = genes
+            individual.score = None
+            individual.validation_method = None
+            individual.genome = None
+            individual.pipeline_string = None
+            individual.validation_time = None
 
+    if 0 < elitism:
+        # update HoF
+        hall_of_fame = update_hall_of_fame(hall_of_fame, population.individuals, elitism)
+        log.debug(
+            'Add best individuals to new generation, scores:{scores}'.format(scores=[x.score for x in hall_of_fame]))
+
+        log.info(
+            'Add best individuals to new generation, scores:{scores}'.format(scores=[x.score for x in hall_of_fame]))
+
+        for b in hall_of_fame:
+            next_generation.individuals.append(copy.copy(b))
+        # for i in range(len(next_generation.individuals)):
+        #     print(next_generation.individuals[i].score)
+
+    log.info('New generation created, scores:{scores}'.format(scores=[x.score for x in next_generation.individuals]))
     return next_generation, hall_of_fame
 
 
 def test_individual(population: Population, x: Individual, validation_method, x_train, y_train, grid_type):
+    log.info(f'Before testing...\n {x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
     if x.genome is None:
         log.info('No genome found. Generating genome.')
         x.genome = create_genome(x.pipeline)
@@ -471,8 +503,8 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                     setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
                 cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS,
                                      error_score="raise")
-                print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}\n\n{x_train}')
-            except (TypeError, ValueError) as e:  # TODO OverflowError: int too big to convert
+                # print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}\n\n{x_train}')
+            except (TypeError, ValueError) as e:
                 population.failed_to_test.append(x)
                 log.error(f"FITTING ERROR\n{x.pipeline}\nRESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
                 log.error(e.__class__)
@@ -513,7 +545,6 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 x.score = 0.0
 
             log.info(f'Pipeline {x.pipeline} \ntested in: {x.validation_time}, score:{x.score}')
-            print(f'Testing done... \n{x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
         if to_ctx_mgr.state == to_ctx_mgr.EXECUTED:
             log.info('Pipeline validation was successfull')
         elif to_ctx_mgr.state == to_ctx_mgr.EXECUTING:
@@ -541,9 +572,9 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             x.score = 0.0
 
         x.pipeline_string = str(x.pipeline)
-        print(f'Returning after test...\n {x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
+        log.info(f'Returning after test...\n {x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
 
-    return x, population
+    return copy.copy(x), copy.copy(population)
 
 
 def test_population(population: Population, validation_method, x_train, y_train, grid_type):
@@ -607,13 +638,13 @@ def roulette(individuals):
     for x in individuals:
         wheel_sum += (x.score / score_sum)
         if wheel_sum > choice:
-            return x
+            return copy.copy(x)
 
 
 def tournament(individuals, tournament_size):
     arena = random.choices(individuals, k=tournament_size)
     arena.sort(key=lambda x: x.score, reverse=True)
-    return arena[0]
+    return copy.copy(arena[0])
 
 
 def get_best_from_pop_test(pop, x_train, y_train, validation_method):
@@ -800,12 +831,12 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
                         continue
                 elif crossover_method == 'uniform':
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
-                        print(f'{g1[key]=}')
-                        print(f'{g2[key]=}')
+                        # print(f'{g1[key]=}')
+                        # print(f'{g2[key]=}')
                         split1 = g1[key] // 1, g1[key] % 1
                         split2 = g2[key] // 1, g2[key] % 1
-                        print(f'{split1=}')
-                        print(f'{split2=}')
+                        # print(f'{split1=}')
+                        # print(f'{split2=}')
                         before_dec = uniform_crossover(int(split1[0]), int(split2[0]))
                         if split1[1] != 0.0:
                             split1 = split1[0], np.format_float_positional(split1[1])
@@ -815,7 +846,7 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
                                                       int(str(split2[1]).split('.')[1]))
 
                         g3[key] = float(f'{before_dec}.{after_dec}')
-                        print(f'float after uniform crossover:{g3[key]}')
+                        # print(f'float after uniform crossover:{g3[key]}')
                         continue
                     if isinstance(g1[key], int) and isinstance(g2[key], int):
                         if g1[key] == -1 or g2[key] == -1:

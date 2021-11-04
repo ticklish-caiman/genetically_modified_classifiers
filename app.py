@@ -1,13 +1,13 @@
 from datetime import datetime
-import logging as log
+import logging
 
 from flask import Flask, render_template, request, redirect
 from engine import gmc_interface as gmc_interface
 import global_control
 
 # Setting log to debug may cause printing logs from used liberties (e.g. matplotlib)
-log.basicConfig(level=log.DEBUG)
-log.getLogger(__name__).addHandler(log.StreamHandler)
+log = logging.getLogger()
+log.setLevel(logging.ERROR)
 log.debug("this will get printed")
 log.info("this will get printed - info")
 log.warning("this will get printed - warning")
@@ -422,7 +422,7 @@ def main():
 
     # host='0.0.0.0', port=5000, <- access in local network
     # app.config['TEMPLATES_AUTO_RELOAD'] = True
-    app.run(debug=True)
+    app.run(debug=False)
 
 
 if __name__ == '__main__':

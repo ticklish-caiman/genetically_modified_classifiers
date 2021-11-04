@@ -127,10 +127,12 @@ def init_selections_tpot():
 
 def initialize_status():
     global status
-    #         [status, best_score, pipeline, time, bar, plot]
+    #         [status, best_score, pipeline, time, bar, plot, scores, avgs]
     status = dict()
     status['status'] = '<br/><date>' + datetime.now().strftime("%d.%m.%Y|%H-%M-%S") + ':</date> GMC not working'
-    # status = ['Idle', None, None, None, None, None]
+    status['scores'] = []
+    status['avgs'] = []
+
 
 
 def initialize_tpot_status():
