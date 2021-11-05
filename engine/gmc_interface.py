@@ -631,6 +631,9 @@ def generate_roc(cv, x_train, y_train, pipeline, file_name):
     global_control.plots['test_texts'].append(str(pipeline))
     global_control.plots['test'].append(pngImageB64String)
 
+    global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date>ROC/AUC created. Refresh the page to display."
+
     # plt.show()
 
 

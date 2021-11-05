@@ -488,19 +488,23 @@ def test_individual(population: Population, x: Individual, validation_method, x_
         log.info('No genome found. Generating genome.')
         x.genome = create_genome(x.pipeline)
     if x.score is None:
-        for y in population.individuals:
+        for y in unpack_history(population).individuals:
             # if x.genome == y.genome and y.score is not None:
             # DeepDiff also returns what exactly didn't match
             if y.score is not None and not DeepDiff(x.genome, y.genome, get_deep_distance=True):
                 log.warning(
-                    f'Identical pipeline was already tested. If you get this message often - increase genes variety. \nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} \nGenes 1:{x.genome} \nGenes 2:{y.genome} ')
-                log.debug('Generating random individual')
+                    f'\nIdentical pipeline was already tested. If you get this message often - increase genes variety ('
+                    f'bigger pop, more mutation/crossover, wider param_grid).\nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} \nGenes 1:{x.genome} \nGenes 2:{y.genome}')
+                # recreate pipeline for historical individual
+                y.pipeline = create_pipeline(y.genome)
+                return y, population
+                # log.debug('Generating random individual')
                 # print(f'{DeepDiff(x.genome, y.genome, significant_digits=10)=}')
                 # x = generate_random_individual(grid_type)
                 # x.genome = create_genome(x.pipeline)
-                return test_individual(population, generate_random_individual(grid_type), validation_method,
-                                       x_train,
-                                       y_train, grid_type)
+                # return test_individual(population, generate_random_individual(grid_type), validation_method,
+                #                        x_train,
+                #                        y_train, grid_type)
         log.debug('Passing pipeline to test:' + str(x.pipeline))
         with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
@@ -1064,7 +1068,7 @@ def mutate(genotype, mutation_rate, mutation_power):
     if random.random() < mutation_rate / 10:
         random_name = random.choice(TRANSFORMERS_NAMES)
         if random_name not in genotype:
-            log.debug('Random transformer name:', random_name)
+            log.debug(f'Random transformer name:{random_name}')
             genotype = add_transformer(random_name, genotype)
 
     # values above ~2146000000 will cause "OverflowError: Python int too large to convert to C long"
@@ -2556,6 +2560,19 @@ def set_selection(selection_type: str):
     SELECTION = selection_type
 
 
+def unpack_history(population):
+    all_individuals = []
+    for i, pop in enumerate(population.history):
+        for x in pop:
+            all_individuals.append(x)
+    heaven = Population(individuals=all_individuals, history=[], dataset_name=population.dataset_name,
+                        dataset_rows=population.dataset_rows,
+                        dataset_attributes=population.dataset_attributes,
+                        dataset_classes=population.dataset_classes, random_state=population.random_state,
+                        failed_to_test=population.failed_to_test)
+    return heaven
+
+
 '''
    !-- OTHER PARAMETERS RESTRCTIONS --!
    PCA:
@@ -2621,15 +2638,5 @@ def set_selection(selection_type: str):
         return best
 
 
-def unpack_history(population):
-    all_individuals = []
-    for i, pop in enumerate(population.history):
-        for x in pop:
-            all_individuals.append(x)
-    heaven = Population(individuals=all_individuals, history=[], dataset_name=population.dataset_name,
-                        dataset_rows=population.dataset_rows,
-                        dataset_attributes=population.dataset_attributes,
-                        dataset_classes=population.dataset_classes, random_state=population.random_state,
-                        failed_to_test=population.failed_to_test)
-    return heaven
+
 '''
