@@ -372,10 +372,11 @@ def update_status(status: str):
 # returns sorted and updated hall of fame and best individuals
 def update_hall_of_fame(hall_of_fame: list, individuals: list, elitism: int):
     all_ind = hall_of_fame + individuals
-    try:
-        hall_of_fame = get_n_best(elitism, all_ind)
-    except TypeError:
-        print('Critical error, unable to update hof')
+    # try:
+    #     hall_of_fame = get_n_best(elitism, all_ind)
+    # except TypeError:
+    #     print('Critical error, unable to update hof')
+    hall_of_fame = get_n_best(elitism, all_ind)
     return hall_of_fame
 
 
@@ -384,7 +385,7 @@ def get_n_best(n: int, individuals: list):
 
     bests = []
     for i in range(n):
-        bests.append(copy.copy(individuals[i]))
+        bests.append(individuals[i])
     return bests
 
 

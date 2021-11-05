@@ -402,6 +402,7 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                                  dataset_classes=population.dataset_classes, random_state=RANDOM_STATE,
                                  failed_to_test=population.failed_to_test, slowpokes=population.slowpokes)
 
+    log.debug(f'BEFORE CROSSOVER {len(next_generation.individuals)=}')
     # creating new generation
     for x in range(len(population.individuals) - elitism):
         # crossover with selection - add new individual to next_generation
@@ -427,15 +428,16 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                               crossover_method))
         else:
             if selection_type == 'roulette':
-                next_generation.individuals.append(roulette(population.individuals))
+                next_generation.individuals.append(copy.deepcopy(roulette(population.individuals)))
             if selection_type == 'tournament5':
-                next_generation.individuals.append(tournament(population.individuals, 5))
+                next_generation.individuals.append(copy.deepcopy(tournament(population.individuals, 5)))
             if selection_type == 'tournament10':
-                next_generation.individuals.append(tournament(population.individuals, 10))
+                next_generation.individuals.append(copy.deepcopy(tournament(population.individuals, 10)))
             if selection_type == 'tournament15':
-                next_generation.individuals.append(tournament(population.individuals, 15))
+                next_generation.individuals.append(copy.deepcopy(tournament(population.individuals, 15)))
             if selection_type == 'tournament20':
-                next_generation.individuals.append(tournament(population.individuals, 20))
+                next_generation.individuals.append(copy.deepcopy(tournament(population.individuals, 20)))
+    log.debug(f'AFTER CROSSOVER {len(next_generation.individuals)=}')
 
     log.info(
         'New generation, scores before mutation:{scores}'.format(scores=[x.score for x in next_generation.individuals]))
@@ -457,6 +459,7 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
             individual.pipeline_string = None
             individual.validation_time = None
 
+    log.debug(f'AFTER MUTATION {len(next_generation.individuals)=}')
     if 0 < elitism:
         # update HoF
         hall_of_fame = update_hall_of_fame(hall_of_fame, population.individuals, elitism)
@@ -470,7 +473,7 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
             next_generation.individuals.append(b)
         # for i in range(len(next_generation.individuals)):
         #     print(next_generation.individuals[i].score)
-
+    log.debug(f'AFTER ELITISM {len(next_generation.individuals)=}')
     log.info('New generation created, scores:{scores}'.format(scores=[x.score for x in next_generation.individuals]))
     return next_generation, hall_of_fame
 
@@ -728,8 +731,8 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
         g3 = g1
     else:
         g3 = g2
-    print(f'First parent genes:{g1}')
-    print(f'Second parent genes{g2}: ')
+    # print(f'First parent genes:{g1}')
+    # print(f'Second parent genes{g2}: ')
     keys_to_skip = {'classifier_type', 'verbose', 'random_state', 'gpu_id'}
 
     # mixing common keys
@@ -847,9 +850,9 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
         if g3['nusvc__degree'] > 1000:
             g3['nusvc__degree'] = 1000
 
-    print(f'Creating child from genome:{g3}')
+    # print(f'Creating child from genome:{g3}')
     pipeline = create_pipeline(g3)
-    print(f'Created pipeline:{pipeline}')
+    # print(f'Created pipeline:{pipeline}')
     return Individual(pipeline=pipeline, genome=g3, validation_method=None, score=None, validation_time=None,
                       pipeline_string=str(pipeline))
 
