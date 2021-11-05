@@ -235,14 +235,14 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
         for individual in pop.individuals:
             # be VERY carefully with objects on list!
             # appending object to another list only links to it, operating on either changes both!
-            unique.append(copy.copy(individual))
+            unique.append(copy.deepcopy(individual))
         for u in unique:
             # don't store pipeline in history to safe memory
             u.pipeline_string = str(u.pipeline)
             u.pipeline = None
         pop.history.append(unique)
-        generation_best_individual = copy.copy(get_best_from_list(pop.individuals))
-        generation_best_score = copy.copy(generation_best_individual.score)
+        generation_best_individual = get_best_from_list(pop.individuals)
+        generation_best_score = generation_best_individual.score
         log.info(f"leader candidate...\n{best=}\n{generation_best_individual.pipeline}")
         if generation_best_score <= best:
             stop_counter -= 1
@@ -250,7 +250,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             stop_counter = early_stop
             best = generation_best_score
             global_control.status['best_score'] = best
-            global_control.status['pipeline'] = generation_best_individual.pipeline
+            global_control.status['pipeline'] = copy.deepcopy(generation_best_individual.pipeline)
             log.info(f"New leader found...\n{best=}\n{generation_best_individual.pipeline}")
 
         if stop_counter < 1:
@@ -275,7 +275,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             fresh_pop.individuals.append(hall_of_fame)
             fresh_pop = test_population(pop, validation_method, x_train, y_train, grid_type)
             pop = fresh_pop
-            generation_best_individual = copy.copy(get_best_from_list(pop.individuals))
+            generation_best_individual = get_best_from_list(pop.individuals)
             generation_best_score = generation_best_individual.score
             if generation_best_score <= best:
                 # stop_counter -= 1
@@ -284,7 +284,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                 stop_counter = early_stop
                 best = generation_best_score
                 global_control.status['best_score'] = best
-                global_control.status['pipeline'] = generation_best_individual.pipeline
+                global_control.status['pipeline'] = copy.deepcopy(generation_best_individual.pipeline)
                 log.info(f"New-Fresh-lider found...\n{best=}\n{generation_best_individual.pipeline}")
 
         update_progress(progress, start)
@@ -306,14 +306,14 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
         update_status('Final validation')
     pop = test_population(pop, validation_method, x_train, y_train, grid_type)
     pop.history.append(pop.individuals)
-    generation_best_individual = copy.copy(get_best_from_list(pop.individuals))
+    generation_best_individual = get_best_from_list(pop.individuals)
     generation_best_score = generation_best_individual.score
     if generation_best_score <= best:
         None
     else:
         best = generation_best_score
         global_control.status['best_score'] = best
-        global_control.status['pipeline'] = generation_best_individual.pipeline
+        global_control.status['pipeline'] = copy.deepcopy(generation_best_individual.pipeline)
         log.info(f"New leader found in last generation...\n{best=}\n{generation_best_individual.pipeline}")
     if GUI:
         update_status('Task finished')
@@ -467,7 +467,7 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
             'Add best individuals to new generation, scores:{scores}'.format(scores=[x.score for x in hall_of_fame]))
 
         for b in hall_of_fame:
-            next_generation.individuals.append(copy.copy(b))
+            next_generation.individuals.append(b)
         # for i in range(len(next_generation.individuals)):
         #     print(next_generation.individuals[i].score)
 
@@ -477,6 +477,10 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
 
 def test_individual(population: Population, x: Individual, validation_method, x_train, y_train, grid_type):
     log.info(f'Before testing...\n {x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
+    # if 'pipeline' in global_control.status:
+    #     print(f"{global_control.status['pipeline']=}")
+    if hasattr(x.pipeline, 'random_state'):
+        setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
     if x.genome is None:
         log.info('No genome found. Generating genome.')
         x.genome = create_genome(x.pipeline)
@@ -489,18 +493,16 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                     f'Identical pipeline was already tested. If you get this message often - increase genes variety. \nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} \nGenes 1:{x.genome} \nGenes 2:{y.genome} ')
                 log.debug('Generating random individual')
                 # print(f'{DeepDiff(x.genome, y.genome, significant_digits=10)=}')
-                x = generate_random_individual(grid_type)
-                x.genome = create_genome(x.pipeline)
-                if hasattr(x.pipeline, 'random_state'):
-                    setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-                return test_individual(population, x, validation_method, x_train, y_train, grid_type)
+                # x = generate_random_individual(grid_type)
+                # x.genome = create_genome(x.pipeline)
+                return test_individual(population, generate_random_individual(grid_type), validation_method,
+                                       x_train,
+                                       y_train, grid_type)
         log.debug('Passing pipeline to test:' + str(x.pipeline))
         with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
             start = datetime.now()
             try:
-                if hasattr(x.pipeline, 'random_state'):
-                    setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
                 cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS,
                                      error_score="raise")
                 # print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}\n\n{x_train}')
@@ -511,12 +513,11 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 log.error(e)
                 x_train = ORIGINAL_X_TRAIN.copy()
                 y_train = ORIGINAL_Y_TRAIN.copy()
-                x = generate_random_individual(grid_type)
+                # x = generate_random_individual(grid_type)
                 start = datetime.now()
                 try:
-                    if hasattr(x.pipeline, 'random_state'):
-                        setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-                    return test_individual(population, x, validation_method, x_train, y_train, grid_type)
+                    return test_individual(population, generate_random_individual(grid_type), validation_method,
+                                           x_train, y_train, grid_type)
                 except (TypeError, ValueError) as e:
                     log.critical(
                         'Critical error - unable to generate random individual')
@@ -529,10 +530,9 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             except TimeoutException:
                 log.error(f'Timeout exception')
                 population.slowpokes.append(x)
-                x = generate_random_individual(grid_type)
-                if hasattr(x.pipeline, 'random_state'):
-                    setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-                return test_individual(population, x, validation_method, x_train, y_train, grid_type)
+                # x = generate_random_individual(grid_type)
+                return test_individual(population, generate_random_individual(grid_type), validation_method, x_train,
+                                       y_train, grid_type)
             except Exception:
                 log.critical(
                     f'Critical error - panic allowed, traceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}, sys.exec_info:{sys.exc_info()}')
@@ -553,18 +553,15 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             log.error(f'Time limitation exceeded, skipped pipeline: {x.pipeline}')
             population.slowpokes.append(x)
             log.info('Generating random individual')
-            x = generate_random_individual(grid_type)
-            if hasattr(x.pipeline, 'random_state'):
-                setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-            return test_individual(population, x, validation_method, x_train, y_train, grid_type)
+            # x = generate_random_individual(grid_type)
+            return test_individual(population, generate_random_individual(grid_type), validation_method, x_train,
+                                   y_train, grid_type)
 
         elif to_ctx_mgr.state == to_ctx_mgr.INTERRUPTED:
             log.warning('Time limitation interrupted')
-            x = generate_random_individual(grid_type)
-            x.genome = create_genome(x.pipeline)
-            if hasattr(x.pipeline, 'random_state'):
-                setattr(x.pipeline, 'random_state', int(RANDOM_STATE))
-            return test_individual(population, x, validation_method, x_train, y_train, grid_type)
+            # x = generate_random_individual(grid_type)
+            return test_individual(population, generate_random_individual(grid_type), validation_method, x_train,
+                                   y_train, grid_type)
         elif to_ctx_mgr.state == to_ctx_mgr.CANCELED:
             print('Oh you called to_ctx_mgr.cancel() method within the block but it')
         else:
@@ -573,8 +570,7 @@ def test_individual(population: Population, x: Individual, validation_method, x_
 
         x.pipeline_string = str(x.pipeline)
         log.info(f'Returning after test...\n {x.pipeline=} \ntested in: {x.validation_time}, score:{x.score}')
-
-    return copy.copy(x), copy.copy(population)
+    return x, population
 
 
 def test_population(population: Population, validation_method, x_train, y_train, grid_type):
@@ -638,13 +634,13 @@ def roulette(individuals):
     for x in individuals:
         wheel_sum += (x.score / score_sum)
         if wheel_sum > choice:
-            return copy.copy(x)
+            return x
 
 
 def tournament(individuals, tournament_size):
     arena = random.choices(individuals, k=tournament_size)
     arena.sort(key=lambda x: x.score, reverse=True)
-    return copy.copy(arena[0])
+    return arena[0]
 
 
 def get_best_from_pop_test(pop, x_train, y_train, validation_method):
@@ -676,39 +672,6 @@ def get_best_from_pop(pop, validation_method):
     if len(pop2) != 0:
         best = max(pop2, key=attrgetter('score'))
     return best
-
-
-def get_best_from_history(pops, validation_method):
-    for i, pop in enumerate(pops):
-        if len(pop) == 0:
-            log.warning('No Individuals found in Population!')
-            return 0
-        pop2 = []
-        best = None
-        for x in pop:
-            if x.validation_method is None:
-                log.warning("Individual ignored - not tested yet")
-                continue
-            if x.validation_method != validation_method:
-                log.warning("Individual ignored - different cross-validation values were used in testing.")
-                continue
-            pop2.append(x)
-        if len(pop2) != 0:
-            best = max(pop2, key=attrgetter('score'))
-        return best
-
-
-def unpack_history(population):
-    all_individuals = []
-    for i, pop in enumerate(population.history):
-        for x in pop:
-            all_individuals.append(x)
-    heaven = Population(individuals=all_individuals, history=[], dataset_name=population.dataset_name,
-                        dataset_rows=population.dataset_rows,
-                        dataset_attributes=population.dataset_attributes,
-                        dataset_classes=population.dataset_classes, random_state=population.random_state,
-                        failed_to_test=population.failed_to_test)
-    return heaven
 
 
 def single_point_crossover(key1, key2):
@@ -765,8 +728,8 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
         g3 = g1
     else:
         g3 = g2
-    # print(f'First parent genes:{g1}')
-    # print(f'Second parent genes{g2}: ')
+    print(f'First parent genes:{g1}')
+    print(f'Second parent genes{g2}: ')
     keys_to_skip = {'classifier_type', 'verbose', 'random_state', 'gpu_id'}
 
     # mixing common keys
@@ -884,9 +847,9 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
         if g3['nusvc__degree'] > 1000:
             g3['nusvc__degree'] = 1000
 
-    # print(f'Creating child from genome:{g3}')
+    print(f'Creating child from genome:{g3}')
     pipeline = create_pipeline(g3)
-    # print(f'Created pipeline:{pipeline}')
+    print(f'Created pipeline:{pipeline}')
     return Individual(pipeline=pipeline, genome=g3, validation_method=None, score=None, validation_time=None,
                       pipeline_string=str(pipeline))
 
@@ -2628,4 +2591,42 @@ def set_selection(selection_type: str):
             
             
             # Logistic Regression supports only penalties in ['l1', 'l2', 'elasticnet', 'none'], got None.
+            
+            
+            
+            
+            
+            LEGACY
+            
+            def get_best_from_history(pops, validation_method):
+    for i, pop in enumerate(pops):
+        if len(pop) == 0:
+            log.warning('No Individuals found in Population!')
+            return 0
+        pop2 = []
+        best = None
+        for x in pop:
+            if x.validation_method is None:
+                log.warning("Individual ignored - not tested yet")
+                continue
+            if x.validation_method != validation_method:
+                log.warning("Individual ignored - different cross-validation values were used in testing.")
+                continue
+            pop2.append(x)
+        if len(pop2) != 0:
+            best = max(pop2, key=attrgetter('score'))
+        return best
+
+
+def unpack_history(population):
+    all_individuals = []
+    for i, pop in enumerate(population.history):
+        for x in pop:
+            all_individuals.append(x)
+    heaven = Population(individuals=all_individuals, history=[], dataset_name=population.dataset_name,
+                        dataset_rows=population.dataset_rows,
+                        dataset_attributes=population.dataset_attributes,
+                        dataset_classes=population.dataset_classes, random_state=population.random_state,
+                        failed_to_test=population.failed_to_test)
+    return heaven
 '''
