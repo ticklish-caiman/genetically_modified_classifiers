@@ -23,6 +23,8 @@
                 <th>Tool</th>
                 <th>Random state</th>
                 <th>Score</th>
+                <th>Time</th>
+                <th>Plot - click to display below</th>
             </tr>
             {% for key, value in pipelines.items() %}
                 <tr>
@@ -54,8 +56,22 @@
                     <td>
                         {{ value['score'] }}
                     </td>
+                    <td>
+                        {{ value['time'] }}
+                    </td>
+                    <td>
+                        <img src="{{ value['plot'] }}" onclick="image(this)"
+                             style="max-width:90%"/>
+                    </td>
                 </tr>
             {% endfor %}
         </table>
     </div>
+    <script type="text/javascript">
+        function image(img) {
+            var image = new Image();
+            image.src = img.src
+            document.body.appendChild(image);
+        }
+    </script>
 {% endblock %}

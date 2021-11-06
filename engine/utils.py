@@ -11,6 +11,7 @@ from operator import attrgetter
 from timeit import default_timer as timer
 
 import numpy as np
+from matplotlib import pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -22,7 +23,7 @@ import pickle as pickle
 # DO NOT REMOVE - those imports are used by exec to convert TPOT pipeline to Pipeline-steps format
 from sklearn.pipeline import make_pipeline, make_union
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, \
-    PowerTransformer, QuantileTransformer, Normalizer, Binarizer, scale, KernelCenterer, OneHotEncoder
+    PowerTransformer, QuantileTransformer, Normalizer, Binarizer, scale, KernelCenterer
 from sklearn.naive_bayes import BernoulliNB, GaussianNB
 from sklearn.svm import LinearSVC, NuSVC
 from sklearn.neighbors import NearestCentroid
@@ -41,7 +42,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.decomposition import FastICA, PCA
 from sklearn.ensemble import ExtraTreesClassifier
 from tpot.builtins import StackingEstimator, ZeroCount, CombineDFs, auto_select_categorical_features, \
-    _transform_selected, CategoricalSelector, ContinuousSelector, FeatureSetSelector
+    _transform_selected, CategoricalSelector, ContinuousSelector, FeatureSetSelector, OneHotEncoder
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.feature_selection import SelectPercentile
 
 global pipe
 
@@ -78,7 +81,8 @@ def save_results_gmc(population, subfolder):
                'tool': 'GMC', 'score': global_control.status['best_score'],
                'pipe_string': global_control.status['pipeline'], 'train_set_rows': population.dataset_rows,
                'train_set_attributes': population.dataset_attributes,
-               'decision_classes': population.dataset_classes, 'random_state': population.random_state}
+               'decision_classes': population.dataset_classes, 'random_state': population.random_state,
+               'time': global_control.status['time'], 'plot': global_control.status['plot']}
     with open(os.path.join('results', subfolder, 'best_pipeline_summary.pickle'), 'wb') as handle:
         pickle.dump(summary, handle, protocol=pickle.HIGHEST_PROTOCOL)
         os.makedirs(os.path.join('results', subfolder), exist_ok=True)
@@ -105,7 +109,8 @@ def save_results_tpot(subfolder):
                'train_set_rows': global_control.tpot_status['train_set_rows'],
                'train_set_attributes': global_control.tpot_status['train_set_attributes'],
                'decision_classes': global_control.tpot_status['decision_classes'],
-               'random_state': global_control.tpot_status['random_state']}
+               'random_state': global_control.tpot_status['random_state'],
+               'time': global_control.tpot_status['time'], 'plot': global_control.tpot_status['plot']}
     with open(os.path.join('results', subfolder, 'best_pipeline_summary.pickle'), 'wb') as handle:
         pickle.dump(summary, handle, protocol=pickle.HIGHEST_PROTOCOL)
         os.makedirs(os.path.join('results', subfolder), exist_ok=True)
@@ -197,18 +202,19 @@ def update_plot(population):
     fig = Figure()
 
     fig.set_dpi(120.)
-    fig.set_figheight(4.0)
+    fig.set_figheight(5.4)
     fig.set_figwidth(6.4)
 
     axis = fig.add_subplot(1, 1, 1)
-    axis.set_title('G-M-C')
+    axis.set_title(global_control.status['title'] + f" Time:{global_control.status['time']}", wrap=True, y=1.01)
+
     axis.set_xlabel("Generation")
     axis.set_ylabel("Score")
     axis.grid()
     axis.plot(series)
     series.update(avgs)
     axis.plot(series)
-    fig.legend(['Best', 'Average'], loc='upper right',
+    fig.legend(['Best', 'Average'], loc='lower right',
                ncol=2, fancybox=True, shadow=True)
     """  https://gitlab.com/-/snippets/1924163 """
     # Convert plot to PNG image
@@ -291,6 +297,11 @@ def update_plot_tpot(tpot_individuals):
     global_control.tpot_status['avgs'] = avgs
     global_control.tpot_status['bests'] = bests
 
+    if global_control.tpot_status['last'] < last_gen_number:
+        global_control.tpot_status['last'] = last_gen_number
+        global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + f':</date> Generation {last_gen_number - 1} scored. Testing generation {last_gen_number}'
+
     draw_plot_tpot()
 
     if global_control.tpot.max_time_mins != 1:
@@ -306,18 +317,20 @@ def draw_plot_tpot():
     fig = Figure()
 
     fig.set_dpi(120.)
-    fig.set_figheight(4.0)
+    fig.set_figheight(5.4)
     fig.set_figwidth(6.4)
 
     axis = fig.add_subplot(1, 1, 1)
-    axis.set_title("TPOT optimization")
+    axis.set_title(global_control.tpot_status[
+                       'title'] + f" Time:{datetime.now() - global_control.tpot_status['start_time']}", wrap=True,
+                   y=1.01)
     axis.set_xlabel("Generation")
     axis.set_ylabel("Score")
     axis.grid()
     axis.plot(series)
     series.update(global_control.tpot_status['avgs'])
     axis.plot(series)
-    fig.legend(['Best', 'Average'], loc='upper right',
+    fig.legend(['Best', 'Average'], loc='lower right',
                ncol=2, fancybox=True, shadow=True)
     # Convert plot to PNG image
     global_control.tpot_status['plot_png'] = io.BytesIO()

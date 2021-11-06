@@ -207,6 +207,10 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     pop.dataset_attributes = x_train.shape[1]
     pop.partial_explore = partial_explore
 
+    # For results reproducibility
+    random.seed(random_state)
+    np.random.seed(random_state)
+
     start = datetime.now()
     init_stop_threads()
     for i in range(generations):
@@ -330,6 +334,8 @@ def init_population(pop_size: int, grid_type: str):
 
 
 def generate_random_individual(grid_type):
+    random.seed(RANDOM_STATE)
+    np.random.seed(RANDOM_STATE)
     transformers = set()
     # randomly choose transformers
     for x in range(random.randint(0, 3)):
@@ -338,6 +344,7 @@ def generate_random_individual(grid_type):
     param_grid, name_object_tuples = get_min_param_grid_and_tuple_list(transformers)
 
     clf = random.choice(CLASSIFIERS)
+    # print(f'Random classifier:{clf=}')
     # pipeline = make_pipeline(*name_object_tuples, clf)
     pipeline = Pipeline(steps=[*name_object_tuples, (type(clf).__name__.lower(), clf)])
     ind = Individual(pipeline=pipeline, genome=None, validation_method=None, score=None, validation_time=None,
@@ -976,7 +983,7 @@ def average_score(individuals: [Individual]) -> float:
     return sum(i.score for i in individuals) / len(individuals)
 
 
-def mutate(genotype, mutation_rate, mutation_power):
+def mutate(genotype, mutation_rate, mutation_amount):
     # exclude unnecessary and problematic keys
     keys_to_skip = {'classifier_type', 'verbose', 'random_state', 'gpu_id', 'verbosity',
                     'standardscaler__copy', 'minmaxscaler__copy', 'robustscaler__copy', 'pca__copy', 'binarizer__copy',
@@ -1010,8 +1017,6 @@ def mutate(genotype, mutation_rate, mutation_power):
                     'extratreeclassifier__min_impurity_split', 'decisiontreeclassifier__min_impurity_split',
                     'bernoullinb__binarize', 'quantiletransformer__n_quantiles'
                     }
-
-    mutation_amount = mutation_power
 
     for key in genotype:
         if key in keys_to_skip:
@@ -1058,14 +1063,14 @@ def mutate(genotype, mutation_rate, mutation_power):
                 genotype[key] = sys.maxsize - 10
 
     # drop random transformer
-    if random.random() < mutation_rate / 10:
+    if random.random() < mutation_rate / 5:
         transformers_names = get_transformers_names(genotype)
         if transformers_names:
             transformer_name = random.choice(list(transformers_names))
             genotype = del_transformer(transformer_name, genotype)
 
     # add random transformer
-    if random.random() < mutation_rate / 10:
+    if random.random() < mutation_rate / 5:
         random_name = random.choice(TRANSFORMERS_NAMES)
         if random_name not in genotype:
             log.debug(f'Random transformer name:{random_name}')

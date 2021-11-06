@@ -4,15 +4,17 @@ import pandas as pd
 from daal4py.sklearn.decomposition import PCA
 from daal4py.sklearn.linear_model import LogisticRegression
 from daal4py.sklearn.svm import SVC
-from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier
+from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, BaggingClassifier, VotingClassifier, \
+    StackingClassifier
 from sklearn.linear_model import PassiveAggressiveClassifier
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler, Binarizer, PowerTransformer, \
     QuantileTransformer
 from sklearn.svm import LinearSVC, NuSVC
-from tpot.builtins import StackingEstimator
+from tpot.builtins import StackingEstimator, OneHotEncoder
 from xgboost import XGBClassifier
 
 from utils import adjust_dataset
@@ -99,10 +101,41 @@ pipe9 = Pipeline(steps=[('minmaxscaler', MinMaxScaler(feature_range=(6, 9))),
                         ('standardscaler', StandardScaler()),
                         ('svc', SVC(C=50.0, kernel='poly', random_state=13))])
 
-pipe10 = Pipeline(steps=[('nusvc',
-                          NuSVC(cache_size=448, coef0=0.11011188298062696, degree=2,
-                                nu=0.19806631227688198, random_state=13,
-                                tol=9.769099811116575e-08))])
+pipe10 = Pipeline(steps=[('baggingclassifier',
+                          BaggingClassifier(n_estimators=10, random_state=13))])
+
+from sklearn.utils import all_estimators
+
+estimators = all_estimators()
+print(f"{estimators=}")
+for name, class_ in estimators:
+    if hasattr(class_, 'predict_proba'):
+        print(name)
+
+# StackingClassifier() - can we use it to 'crossover' different types of classifiers?
+# ('svc', SVC(C=50.0, kernel='poly', random_state=13)),
+pipe11 = Pipeline(steps=[('votingclassifier',
+                          VotingClassifier(
+                              estimators=[('logisticregression',
+                                           LogisticRegression(
+                                               C=7443275351998.929,
+                                               l1_ratio=0.38109880448570654,
+                                               max_iter=2146000000,
+                                               random_state=13,
+                                               solver='sag',
+                                               tol=0.23378803458994984)),
+                                          ('baggingclassifier',
+                                           BaggingClassifier(n_estimators=10, random_state=13))], voting='soft')),
+                         ('nusvc',
+                          NuSVC(cache_size=8000, coef0=0.11131255758721093,
+                                degree=100000000, max_iter=1,
+                                nu=0.6068479033102463, random_state=13, shrinking=False,
+                                tol=0.10361680952905557))])
+
+pipe11 = make_pipeline(
+    OneHotEncoder(minimum_fraction=0.05, sparse=False, threshold=10),
+    MLPClassifier(alpha=0.01, learning_rate_init=0.01)
+)
 
 dataset = pd.read_csv('data-CSV/sonar.all-data.csv', delimiter=',')
 dataset = adjust_dataset(dataset)
@@ -111,10 +144,10 @@ features = dataset.drop('class', axis=1).values
 x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=0.1,
                                                     random_state=13)
 
-for i in range(10):
-    cv = cross_val_score(pipe10, x_train, y_train, cv=10, n_jobs=-1,
+for i in range(1):
+    cv = cross_val_score(pipe11, x_train, y_train, cv=10, n_jobs=-1,
                          error_score="raise")
-    pipe10.fit(x_train, y_train)
+    pipe11.fit(x_train, y_train)
     print(f'{cv=}')
     print(f'CV average: {sum(cv) / len(cv)}')
-    print(f'Test score: {pipe10.score(x_test, y_test)}')
+    print(f'Test score: {pipe11.score(x_test, y_test)}')

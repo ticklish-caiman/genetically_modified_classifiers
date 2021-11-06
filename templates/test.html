@@ -71,10 +71,10 @@
                     {#   value="True" -> otherwise input will return 'on' instead od True             #}
                     <input name="show_roc" type="checkbox" value="True"
                            {% if state['show_roc'] %}checked{% endif %}>
-                    t-TEST: <label class="tip" type="checkbox"
-                                   title="Apply Student's test"></label>
-                    <input name="t_test" type="checkbox" value="True"
-                           {% if state['t_test'] %}checked{% endif %}>
+{#                    t-TEST: <label class="tip" type="checkbox"#}
+{#                                   title="Apply Student's test"></label>#}
+{#                    <input name="t_test" type="checkbox" value="True"#}
+{#                           {% if state['t_test'] %}checked{% endif %}>#}
                     <hr>
                     <select name=datasets method="GET" action="/" size="4">
                         <option value="{{ state['dataset'] }}" selected>{{ state['dataset'] }}</option>

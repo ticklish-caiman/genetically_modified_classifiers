@@ -3,6 +3,7 @@ import io
 import os
 import pickle
 import time
+import traceback
 from itertools import cycle
 from textwrap import wrap
 
@@ -24,7 +25,7 @@ from utils import adjust_dataset, save_results_gmc, save_results_tpot, save_geno
 import global_control
 
 datasets = ["biodeg.csv", "breast-cancer.csv", "diabetes(pima).csv", "ionosphere.csv", "MAGIC.csv", "monks2.csv",
-            "sonar.all-data.csv", "tic-tac-toeNum.csv"]
+            "sonar.all-data.csv", "tic-tac-toeNum.csv", "iris.csv", "wine_data.csv"]
 grids = ['GMC-minimal', 'GMC-big', 'GMC-extreme', 'TPOT-ish']
 rows_options = ["10 rows", "100 rows", "1000 rows",
                 "10000 rows"]
@@ -66,12 +67,15 @@ def get_csv_data(file, row_limit, column_limit, adjust):
     return data
 
 
-def run_evolve(x_train, y_train, n_jobs, file_name, population=50, generations=1000, validation_method=10, elitism=5,
+def run_evolve(x_train, y_train, x_test, y_test, n_jobs, file_name, population=50, generations=1000,
+               validation_method=10, elitism=5,
                random_state=13, selection_type='roulette', crossover_rate=0.5, early_stop=100, pipeline_time_limit=120,
                preselection=None, cross_method='average', mutation=0.5, mutation_power=1.0):
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population ({file_name})'
     global_control.status['best_score'] = 0.0
+    global_control.status[
+        'title'] = f"GMC \nPS:{population} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop}  GRID:GMC-big"
     pop1 = pop.evolve(population=population, generations=generations, validation_method=validation_method,
                       x_train=x_train, y_train=y_train,
                       elitism=elitism, random_state=random_state, selection_type=selection_type,
@@ -84,6 +88,14 @@ def run_evolve(x_train, y_train, n_jobs, file_name, population=50, generations=1
     # best = pop.get_best_from_history(pop1.history, validation_method)
     save_results_gmc(pop1, subfolder_name)
     log.info('GMC finished')
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> CV average score:{global_control.status["best_score"]}'
+    global_control.status['pipeline'].fit(x_train, y_train)
+    test_score = global_control.status['pipeline'].score(x_test, y_test)
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> Test score:{test_score}'
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> Evolution time:{global_control.status["time"]}'
 
     return pop1
 
@@ -136,6 +148,8 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
     test_score = global_control.status['pipeline'].score(x_test, y_test)
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Test score:{test_score}'
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> Evolution time:{global_control.status["time"]}'
 
     global_control.machine_info['free_threads'] += n_jobs
 
@@ -229,6 +243,9 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f":</date> Dropping {partial_explore} of original dataset to improve performance."
 
+    global_control.status[
+        'title'] = f"GMC \nPS:{population} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop}  GRID:GMC-big"
+
     gmc_thread = threading.Thread(target=run_evolve_custom, name="gmc_thread",
                                   args=(file_name, validation_size, n_jobs, population, generations,
                                         elitism,
@@ -279,23 +296,27 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
     global_control.tpot_status['train_set_attributes'] = x_train.shape[1]
     global_control.tpot_status['decision_classes'] = len(np.unique(y_train))
     start = datetime.now()
+    global_control.tpot_status['start_time'] = datetime.now()
     global_control.tpot.fit(x_train, y_train)
-
     global_control.tpot_status['time'] = datetime.now() - start
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f':</date> TPOT finished in:{global_control.tpot_status["time"]}'
+        "%d.%m.%Y|%H-%M-%S") + f':</date> TPOT finished in:{datetime.now() - global_control.tpot_status["start_time"]}'
     global_control.machine_info['free_threads'] += n_jobs
 
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
+    update_plot_tpot(global_control.tpot.evaluated_individuals_)
     save_results_tpot(subfolder_name)
 
     log.info('Tpot finished')
+    global_control.tpot_status['running'] = False
+
 
 
 def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, offspring=20, generations=1000,
                     random_state=13, crossover_rate=0.1, early_stop=50,
                     pipeline_time_limit=120, cv=10, mutation=0.2):
     running_threads = []
+    global_control.tpot_status['running'] = True
     for thread in threading.enumerate():
         running_threads.append(thread.name)
     log.debug(running_threads)
@@ -336,6 +357,8 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
         "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
     global_control.init_tpot()
     global_control.init_stop_tpot()
+    global_control.tpot_status[
+        'title'] = f"TPOT \nPS/OS:{population}/{offspring} G:{generations} CO/MC:{crossover_rate}/{mutation} CV:{cv} ES:{early_stop}"
     global_control.tpot_thread = threading.Thread(target=run_tpot_custom, name="tpot_thread",
                                                   args=(file_name, validation_size, n_jobs, population, generations,
                                                         offspring,
@@ -349,7 +372,7 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
             global_control.status_thread = threading.Thread(name='status_update_thread', target=update_tpot_status)
             global_control.status_thread.start()
     else:
-        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
             "%d.%m.%Y|%H-%M-%S") + ":</date> Not enough cores available."
         print(f'Saving thread for later: {global_control.tpot_thread=}')
         global_control.queue.append(global_control.tpot_thread)
@@ -371,6 +394,8 @@ def run_tpot(file_name, x_train, y_train, n_jobs, cv, random_state):
     global_control.init_stop_tpot()
     print(f'{n_jobs=}')
     print(f'{int(n_jobs)=}')
+    global_control.tpot_status[
+        'title'] = f"TPOT \nPS:{50} OS:{45} G:{1000} CV:{10} CO:{0.5} ES:{100} MC:{0.5}"
     global_control.tpot = TPOTClassifier(cv=10, generations=1000, verbosity=2, population_size=50,
                                          offspring_size=45,
                                          mutation_rate=0.5,
@@ -383,26 +408,29 @@ def run_tpot(file_name, x_train, y_train, n_jobs, cv, random_state):
     if 'status_update_thread' not in running_threads:
         global_control.status_thread = threading.Thread(name='status_update_thread', target=update_tpot_status)
         global_control.status_thread.start()
-
+    global_control.tpot_status['start_time'] = datetime.now()
     global_control.tpot.fit(x_train, y_train)
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + ':</date> TPOT finished'
     global_control.tpot_status['time'] = datetime.now() - start
 
     subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
+    update_plot_tpot(global_control.tpot.evaluated_individuals_)
     save_results_tpot(subfolder_name)
 
     log.info('TPOT finished')
 
+    global_control.tpot_status['running'] = False
+
 
 def update_tpot_status():
-    while True:
-        time.sleep(1.2)
-        update_plot_tpot(global_control.tpot.evaluated_individuals_)
+    global_control.tpot_status['last'] = 0
+    while global_control.tpot_status['running']:
+        time.sleep(3.0)
         try:
             update_plot_tpot(global_control.tpot.evaluated_individuals_)
         except AttributeError:
-            log.info('TPOT not running - nothing to refresh')
+            log.error('TPOT not running - nothing to refresh')
 
 
 def start_evolution_simple(file_name, core_balance):
@@ -434,7 +462,7 @@ def start_evolution_simple(file_name, core_balance):
 
     if gmc_threads != 0:
         gmc_thread = threading.Thread(target=run_evolve, name="gmc_thread",
-                                      args=(x_train, y_train, gmc_threads, file_name))
+                                      args=(x_train, y_train, x_test, y_test, gmc_threads, file_name))
         if 'gmc_thread' not in running_threads:
             # If we want the app to keep running, even when webapp gets reloaded we should use Process instead of Thread
             # gmc_thread = Process(target=run_evolve, args=(x_train, y_train), name="gmc_process")
@@ -494,7 +522,7 @@ def unpickle_pipelines():
     try:
         sub_folders = [f.path for f in os.scandir('results') if f.is_dir()]
     except FileNotFoundError:
-        log.info('No results folder')
+        log.info('\nresults folder not found')
         return
     print(sub_folders)
     for folder in sub_folders:
@@ -502,6 +530,11 @@ def unpickle_pipelines():
             with open(os.path.join(folder, 'best_pipeline.pickle'), 'rb') as handle:
                 pipelines.append(pickle.load(handle))
         except FileNotFoundError:
+            log.error(f"Pipeline not found:{folder=}")
+            continue
+        except Exception:
+            log.error(
+                f"\nUnable to unpicle pipeline in folder:{folder}\ntraceback:{traceback.print_exc()}, formatted traceback:{traceback.format_exc()}")
             continue
     filtered_pipes = [x for x in pipelines if not isinstance(x, str)]
     global_control.PIPELINES = filtered_pipes
