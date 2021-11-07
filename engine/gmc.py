@@ -101,6 +101,7 @@ CV = 10
 TIME_LIMIT_GENERATION = 1200
 TIME_LIMIT_PIPELINE = 600
 GUI = True
+GENERATOR_COUNTER = 1
 
 
 def set_time_limits(time_s, generations):
@@ -110,6 +111,19 @@ def set_time_limits(time_s, generations):
     TIME_LIMIT_PIPELINE = time_s
     if TIME_LIMIT_GENERATION > 1000000:
         TIME_LIMIT_GENERATION = 1000000
+
+
+def increase_counter():
+    global GENERATOR_COUNTER
+    if GENERATOR_COUNTER > 10000000:
+        GENERATOR_COUNTER = 1
+    else:
+        GENERATOR_COUNTER += 1
+
+
+def reset_counter():
+    global GENERATOR_COUNTER
+    GENERATOR_COUNTER = 1
 
 
 CLASSIFIERS = [BernoulliNB(), GaussianNB(), KNeighborsClassifier(), DecisionTreeClassifier(), ExtraTreeClassifier(),
@@ -221,6 +235,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             # pop.individuals.sort(key=lambda x: x.score is not None, reverse=True)
             init_stop_threads()
             log.info(f"Stop requested, returning...\n{best=}\n{generation_best_individual.pipeline}")
+            reset_counter()
             return pop
         if GUI:
             update_status(f'Validating generation {i}/{generations}')
@@ -262,6 +277,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             update_status(f'Early stop! No change in {early_stop} generations')
             log.info(
                 f"\nStop counter triggered, returning...\n{global_control.status['best_score']}\n{global_control.status['pipeline']}")
+            reset_counter()
             return pop
 
         if stop_counter <= early_stop // 2 and fresh_blood_mode:
@@ -322,6 +338,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     if GUI:
         update_status('Task finished')
     log.info(f"Generations limit reached, returning...\n{best=}\n{generation_best_individual.pipeline}")
+    reset_counter()
     return pop
 
 
@@ -334,16 +351,17 @@ def init_population(pop_size: int, grid_type: str):
 
 
 def generate_random_individual(grid_type):
-    random.seed(RANDOM_STATE)
-    np.random.seed(RANDOM_STATE)
+    # counter is used to avoid generating same individuals each time, but generate same results at re-run
+    np.random.seed(RANDOM_STATE + GENERATOR_COUNTER)
+    increase_counter()
     transformers = set()
     # randomly choose transformers
-    for x in range(random.randint(0, 3)):
-        transformers.add(random.choice(TRANSFORMERS))
+    for x in range(np.random.randint(0, 3)):
+        transformers.add(np.random.choice(TRANSFORMERS))
 
     param_grid, name_object_tuples = get_min_param_grid_and_tuple_list(transformers)
 
-    clf = random.choice(CLASSIFIERS)
+    clf = np.random.choice(CLASSIFIERS)
     log.debug(f'Random classifier:{clf=}')
     # pipeline = make_pipeline(*name_object_tuples, clf)
     pipeline = Pipeline(steps=[*name_object_tuples, (type(clf).__name__.lower(), clf)])
@@ -387,7 +405,7 @@ def generate_random_individual(grid_type):
     #          len(grid)=5836800000
     # it seems to only happen with TPOTish grid and every call, even grid[0] throws IE
     # for now recursive fix was applied
-    random_grid_index = random.randint(0, len(grid) - 1)
+    random_grid_index = np.random.randint(0, len(grid) - 1)
     try:
         random_individual_grid = grid[random_grid_index]
     except IndexError:
@@ -408,6 +426,9 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                                  dataset_rows=population.dataset_rows, dataset_attributes=population.dataset_attributes,
                                  dataset_classes=population.dataset_classes, random_state=RANDOM_STATE,
                                  failed_to_test=population.failed_to_test, slowpokes=population.slowpokes)
+
+    random.seed(RANDOM_STATE + GENERATOR_COUNTER)
+    increase_counter()
 
     log.debug(f'BEFORE CROSSOVER {len(next_generation.individuals)=}')
     # creating new generation
