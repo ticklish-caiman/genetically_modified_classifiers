@@ -344,7 +344,7 @@ def generate_random_individual(grid_type):
     param_grid, name_object_tuples = get_min_param_grid_and_tuple_list(transformers)
 
     clf = random.choice(CLASSIFIERS)
-    # print(f'Random classifier:{clf=}')
+    log.debug(f'Random classifier:{clf=}')
     # pipeline = make_pipeline(*name_object_tuples, clf)
     pipeline = Pipeline(steps=[*name_object_tuples, (type(clf).__name__.lower(), clf)])
     ind = Individual(pipeline=pipeline, genome=None, validation_method=None, score=None, validation_time=None,

@@ -43,7 +43,6 @@ def main():
         else:
             selected_dataset = gmc_interface.datasets[0]
         state = {'dataset': selected_dataset}
-
         return render_template('simple.html', datasets=gmc_interface.datasets, state=state,
                                cores=global_control.machine_info['logical_cores'],
                                cpu_name=global_control.machine_info['cpu_name'])
@@ -414,6 +413,30 @@ def main():
         global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
             "%d.%m.%Y|%H-%M-%S") + ':</date> Gentle stop requested. TPOT got 1 last minute to finish'
         global_control.stop_tpot = True
+        return redirect(request.referrer)
+
+    @app.route('/debug_on')
+    def debug_on():
+        log.setLevel(logging.DEBUG)
+        log.debug("this will get printed")
+        log.info("this will get printed - info")
+        log.warning("this will get printed - warning")
+        log.error("this will get printed - error")
+        log.critical("this will get printed - critical")
+        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + ':</date> Debug mode:ON'
+        return redirect(request.referrer)
+
+    @app.route('/debug_off')
+    def debug_off():
+        log.setLevel(logging.ERROR)
+        log.debug("this will get printed")
+        log.info("this will get printed - info")
+        log.warning("this will get printed - warning")
+        log.error("this will get printed - error")
+        log.critical("this will get printed - critical")
+        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + ':</date> Debug mode:OFF'
         return redirect(request.referrer)
 
     @app.route('/test_status')

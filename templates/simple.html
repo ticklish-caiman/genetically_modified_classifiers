@@ -19,8 +19,8 @@
                         Select dataset from list on the left
                         <br/>Use slider below to split them between methods</h3>
                     <h1>GMC<input type="range" name="cores_balance"
-                                   min={{ cores/-2 }} max={{ cores/2 }} value="0"
-                                   class="slider2" id="power_of_gmc">TPOT</h1>
+                                  min={{ cores/-2 }} max={{ cores/2 }} value="0"
+                                  class="slider2" id="power_of_gmc">TPOT</h1>
                     <input class="evo" type="submit" value="Evolve">
                 </div>
                 <h3>Running both methods at once may have negative effect on performance. It is recommended to run each
@@ -44,6 +44,12 @@
         </form>
         <form action="/cls_tpot" method="GET">
             <input type="submit" value="Clear TPOT console">
+        </form>
+        <form action="/debug_on" method="GET">
+            <input type="submit" value="Debug on">
+        </form>
+        <form action="/debug_off" method="GET">
+            <input type="submit" value="Debug off">
         </form>
     </div>
 

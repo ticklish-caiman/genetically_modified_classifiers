@@ -75,7 +75,7 @@ def run_evolve(x_train, y_train, x_test, y_test, n_jobs, file_name, population=5
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population ({file_name})'
     global_control.status['best_score'] = 0.0
     global_control.status[
-        'title'] = f"GMC \nPS:{population} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop}  GRID:GMC-big"
+        'title'] = f"GMC \nPS/E:{population}/{elitism} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop}  GRID:GMC-big"
     pop1 = pop.evolve(population=population, generations=generations, validation_method=validation_method,
                       x_train=x_train, y_train=y_train,
                       elitism=elitism, random_state=random_state, selection_type=selection_type,
@@ -244,7 +244,7 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
         "%d.%m.%Y|%H-%M-%S") + f":</date> Dropping {partial_explore} of original dataset to improve performance."
 
     global_control.status[
-        'title'] = f"GMC \nPS:{population} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop}  GRID:GMC-big"
+        'title'] = f"GMC \nPS/E:{population}/{elitism} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop} GRID:{grid}"
 
     gmc_thread = threading.Thread(target=run_evolve_custom, name="gmc_thread",
                                   args=(file_name, validation_size, n_jobs, population, generations,
