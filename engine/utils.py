@@ -77,7 +77,7 @@ def save_results_gmc(population, subfolder):
     # best_individual = get_best_from_list(population.individuals)
     log.debug(f'Passed dataset: {population.dataset_name=}')
     print(f"\n{global_control.status['pipeline']=}\n{global_control.status['best_score']}")
-    summary = {'dataset_name': population.dataset_name, 'cv': population.individuals[0].validation_method,
+    summary = {'dataset_name': population.dataset_name, 'cv': population.history[0][0].validation_method,
                'tool': 'GMC', 'score': global_control.status['best_score'],
                'pipe_string': global_control.status['pipeline'], 'train_set_rows': population.dataset_rows,
                'train_set_attributes': population.dataset_attributes,

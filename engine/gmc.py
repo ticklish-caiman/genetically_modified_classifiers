@@ -380,7 +380,6 @@ def generate_random_individual(grid_type):
     grid = ParameterGrid(param_grid)
     log.debug(f'All possible combinations for this individual:{len(grid)}')
     ind.__setattr__('all_combinations', len(grid))
-    ind.__setattr__('grid_used', grid)
 
     if PRESELECTION:
         with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE * 5) as to_ctx_mgr:
@@ -415,6 +414,7 @@ def generate_random_individual(grid_type):
     pipeline.set_params(**random_individual_grid)
     log.debug(f'Random pipeline: {pipeline}')
     ind.__setattr__('pipeline', pipeline)
+    ind.__setattr__('grid_used', random_individual_grid)
     return ind
 
 
