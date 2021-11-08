@@ -357,11 +357,13 @@ span {
     max-height: 400px;
 }
 
+
 .test option {
     /* wrap text in compatible browsers */
-    -moz-white-space: pre-wrap;
-    -o-white-space: pre-wrap;
-    white-space: pre-wrap;
+    white-space: -moz-pre-wrap; /* Firefox */
+    white-space: -o-pre-wrap; /* Opera */
+    white-space: pre-wrap; /* Chrome; W3C standard */
+    word-wrap: break-word; /* IE */
     /* hide text that can't wrap with an ellipsis */
     overflow: hidden;
     text-overflow: ellipsis;
