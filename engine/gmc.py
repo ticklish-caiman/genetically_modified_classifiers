@@ -384,15 +384,18 @@ def generate_random_individual(grid_type):
     if PRESELECTION:
         with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE * 5) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
-            search = RandomizedSearchCV(pipeline, param_grid, n_jobs=N_JOBS, cv=2, n_iter=10)
+            search = RandomizedSearchCV(pipeline, param_grid, n_jobs=N_JOBS, cv=2, n_iter=10, random_state=RANDOM_STATE)
             # search = HalvingRandomSearchCV(pipeline, param_grid, n_jobs=N_JOBS, cv=2)
             # search = GridSearchCV(pipeline, param_grid, n_jobs=4, cv=2)
-            search.fit(ORIGINAL_X_TRAIN, ORIGINAL_Y_TRAIN)
-            pipeline = search.best_estimator_
-            ind.__setattr__('pipeline', pipeline)
+            try:
+                search.fit(ORIGINAL_X_TRAIN, ORIGINAL_Y_TRAIN)
+                pipeline = search.best_estimator_
+                ind.__setattr__('pipeline', pipeline)
+                return ind
+            except:
+                log.error("Preselection (RandomizedSearchCV) failed. Choosing individual at random")
         if to_ctx_mgr.state == to_ctx_mgr.EXECUTED:
             log.info('Pipeline preselection was successful')
-            return ind
         elif to_ctx_mgr.state == to_ctx_mgr.EXECUTING:
             log.error('Time limitations error - executing was passed after execution')
         elif to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
