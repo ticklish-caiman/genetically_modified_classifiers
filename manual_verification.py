@@ -1,13 +1,16 @@
 import sys
+from statistics import stdev
 
 import pandas as pd
 from daal4py.sklearn.decomposition import PCA
+from daal4py.sklearn.ensemble import RandomForestClassifier
 from daal4py.sklearn.linear_model import LogisticRegression
+from daal4py.sklearn.neighbors import KNeighborsClassifier
 from daal4py.sklearn.svm import SVC
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, BaggingClassifier, VotingClassifier, \
     StackingClassifier
 from sklearn.linear_model import PassiveAggressiveClassifier
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, LeaveOneOut
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline, make_pipeline
@@ -21,9 +24,92 @@ from utils import adjust_dataset
 
 print(sys.maxsize)
 
-if 109387354633633727129018706001594737087405723691181995809612796385783148108984970605 > sys.maxsize:
-    print(True)
+tpot_bests_biodeg = []
 
+tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()),
+                                       ExtraTreesClassifier(bootstrap=True, criterion="gini", max_features=0.8,
+                                                            min_samples_leaf=1, min_samples_split=6, n_estimators=100)))
+tpot_bests_biodeg.append(
+    make_pipeline(StackingEstimator(estimator=LogisticRegression(C=15.0, dual=False, penalty="l2")),
+                  XGBClassifier(learning_rate=0.1, max_depth=3, min_child_weight=2, n_estimators=100,
+                                nthread=1, subsample=0.9500000000000001)))
+tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()), MinMaxScaler(),
+                                       ExtraTreesClassifier(bootstrap=True, criterion="entropy",
+                                                            max_features=0.9500000000000001, min_samples_leaf=1,
+                                                            min_samples_split=10, n_estimators=100)))
+tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()),
+                                       RandomForestClassifier(bootstrap=False, criterion="entropy", max_features=0.3,
+                                                              min_samples_leaf=1, min_samples_split=6,
+                                                              n_estimators=100)))
+tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()),
+                                       ExtraTreesClassifier(bootstrap=True, criterion="entropy",
+                                                            max_features=0.7000000000000001, min_samples_leaf=3,
+                                                            min_samples_split=2, n_estimators=100)))
+
+dataset = pd.read_csv('data-CSV/biodeg.csv', delimiter=',')
+dataset = adjust_dataset(dataset)
+features = dataset.drop('class', axis=1).values
+
+x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=0.1,
+                                                    random_state=13)
+
+pipes_str = []
+results_cv = []
+results_test = []
+std = []
+
+# for x in tpot_bests_biodeg:
+#     cv = cross_val_score(x, x_train, y_train, cv=10, n_jobs=-1,
+#                          error_score="raise")
+#     x.fit(x_train, y_train)
+#     pipes_str.append(str(x))
+#     results_cv.append(cv)
+#     results_test.append(x.score(x_test, y_test))
+
+tpot_bests_biodeg[0] = Pipeline(steps=[('robustscaler', RobustScaler(quantile_range=(2, 5), with_scaling=False)), (
+'pca', PCA(iterated_power=12, n_components=15, random_state=13, tol=0.721712793981146)), ('mlpclassifier',
+                                                                                          MLPClassifier(
+                                                                                              alpha=0.0002461966497039305,
+                                                                                              beta_1=0.8, beta_2=0.8,
+                                                                                              epsilon=6.744452314776567e-09,
+                                                                                              hidden_layer_sizes=389,
+                                                                                              learning_rate='invscaling',
+                                                                                              learning_rate_init=5.838171481172468e-05,
+                                                                                              max_fun=1066090,
+                                                                                              max_iter=4864,
+                                                                                              momentum=0.6,
+                                                                                              n_iter_no_change=3119,
+                                                                                              power_t=0.17848897677742048,
+                                                                                              random_state=13,
+                                                                                              solver='lbfgs',
+                                                                                              tol=8.645569393437859e-09,
+                                                                                              validation_fraction=0.05158356193854937))])
+for n in range(1):
+    cv = cross_val_score(tpot_bests_biodeg[0], x_train, y_train, cv=10, n_jobs=-1,
+                         error_score="raise")
+    tpot_bests_biodeg[0].fit(x_train, y_train)
+    pipes_str.append(str(tpot_bests_biodeg[0]))
+    results_cv.append(cv)
+    results_test.append(tpot_bests_biodeg[0].score(x_test, y_test))
+    std.append(stdev(cv))
+
+cv_averages = []
+
+for i in range(len(pipes_str)):
+    cv_averages.append(sum(results_cv[i]) / len(results_cv[i]))
+    print(
+        f"{pipes_str[i]}\nCV:{results_cv[i]}\nAVG:{sum(results_cv[i]) / len(results_cv[i])}\nTest:{results_test[i]}\nSTDEV:{std[i]}")
+
+print(f"STDEV IN ALL RUNS:{stdev(cv_averages)}")
+
+# from sklearn.utils import all_estimators
+#
+# estimators = all_estimators()
+# print(f"{estimators=}")
+# for name, class_ in estimators:
+#     if hasattr(class_, 'predict_proba'):
+#         print(name)
+#
 pipe = Pipeline(steps=[('minmaxscaler', MinMaxScaler(feature_range=(3, 4))),
                        ('robustscaler',
                         RobustScaler(quantile_range=(7, 8), with_scaling=False)),
@@ -104,13 +190,6 @@ pipe9 = Pipeline(steps=[('minmaxscaler', MinMaxScaler(feature_range=(6, 9))),
 pipe10 = Pipeline(steps=[('baggingclassifier',
                           BaggingClassifier(n_estimators=10, random_state=13))])
 
-from sklearn.utils import all_estimators
-
-estimators = all_estimators()
-print(f"{estimators=}")
-for name, class_ in estimators:
-    if hasattr(class_, 'predict_proba'):
-        print(name)
 
 # StackingClassifier() - can we use it to 'crossover' different types of classifiers?
 # ('svc', SVC(C=50.0, kernel='poly', random_state=13)),
@@ -137,17 +216,6 @@ pipe11 = make_pipeline(
     MLPClassifier(alpha=0.01, learning_rate_init=0.01)
 )
 
-dataset = pd.read_csv('data-CSV/sonar.all-data.csv', delimiter=',')
-dataset = adjust_dataset(dataset)
-features = dataset.drop('class', axis=1).values
-
-x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=0.1,
-                                                    random_state=13)
-
-for i in range(1):
-    cv = cross_val_score(pipe11, x_train, y_train, cv=10, n_jobs=-1,
-                         error_score="raise")
-    pipe11.fit(x_train, y_train)
-    print(f'{cv=}')
-    print(f'CV average: {sum(cv) / len(cv)}')
-    print(f'Test score: {pipe11.score(x_test, y_test)}')
+pipe11 = Pipeline(steps=[('minmaxscaler', MinMaxScaler(feature_range=(2, 3))), ('powertransformer', PowerTransformer()),
+                         ('kneighborsclassifier',
+                          KNeighborsClassifier(algorithm='brute', leaf_size=21, n_neighbors=1, weights='distance'))])

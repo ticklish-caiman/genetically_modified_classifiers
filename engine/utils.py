@@ -45,6 +45,11 @@ from tpot.builtins import StackingEstimator, ZeroCount, CombineDFs, auto_select_
     _transform_selected, CategoricalSelector, ContinuousSelector, FeatureSetSelector, OneHotEncoder
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.feature_selection import SelectPercentile
+from sklearn.kernel_approximation import RBFSampler
+from sklearn.kernel_approximation import Nystroem
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.cluster import FeatureAgglomeration
+from sklearn.feature_selection._univariate_selection import f_classif
 
 global pipe
 
@@ -78,7 +83,8 @@ def save_results_gmc(population, subfolder):
     log.debug(f'Passed dataset: {population.dataset_name=}')
     print(f"\n{global_control.status['pipeline']=}\n{global_control.status['best_score']}")
     summary = {'dataset_name': population.dataset_name, 'cv': population.history[0][0].validation_method,
-               'tool': 'GMC', 'score': global_control.status['best_score'],
+               'tool': 'GMC',
+               'score': f"CV:{global_control.status['best_score']}\nTest:{global_control.status['best_test_score']}",
                'pipe_string': global_control.status['pipeline'], 'train_set_rows': population.dataset_rows,
                'train_set_attributes': population.dataset_attributes,
                'decision_classes': population.dataset_classes, 'random_state': population.random_state,
@@ -99,12 +105,19 @@ def save_results_tpot(subfolder):
     # with file name tpot will safe to file, without it, it will return string
     to_write = global_control.tpot.export('')
     to_write = [to_write.replace("\r\n", "").replace("  ", "").replace("\n", "") for x in to_write]
-    make_pipeline_string = re.search('exported_pipeline = (.+?)#', to_write[0]).group(1)
+
+    # if random state was set the pipeline is between "exported_pipeline = " and "#"
+    try:
+        make_pipeline_string = re.search('exported_pipeline = (.+?)#', to_write[0]).group(1)
+    except AttributeError:
+        # if random_state=None pipeline is between "exported_pipeline = " and "exported_pipeline"
+        make_pipeline_string = re.search('exported_pipeline = (.+?)exported_pipeline', to_write[0]).group(1)
 
     exec('global pipe; pipe=' + make_pipeline_string)
 
     summary = {'dataset_name': global_control.tpot_status['dataset_name'], 'cv': global_control.tpot_status['cv'],
-               'tool': 'TPOT', 'score': global_control.tpot_status['best_score'],
+               'tool': 'TPOT',
+               'score': f"CV:{global_control.tpot_status['best_score']}\nTest:{global_control.tpot_status['best_test_score']}",
                'pipe_string': str(pipe),
                'train_set_rows': global_control.tpot_status['train_set_rows'],
                'train_set_attributes': global_control.tpot_status['train_set_attributes'],
@@ -114,8 +127,14 @@ def save_results_tpot(subfolder):
     with open(os.path.join('results', subfolder, 'best_pipeline_summary.pickle'), 'wb') as handle:
         pickle.dump(summary, handle, protocol=pickle.HIGHEST_PROTOCOL)
         os.makedirs(os.path.join('results', subfolder), exist_ok=True)
-    with open(os.path.join('results', subfolder, 'best_pipeline.pickle'), 'wb') as handle:
-        pickle.dump(pipe, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    try:
+        with open(os.path.join('results', subfolder, 'best_pipeline.pickle'), 'wb') as handle:
+            pickle.dump(pipe, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    except:
+        with open(os.path.join('results', subfolder, 'best_pipeline.pickle'), 'wb') as handle:
+            pickle.dump(str(pipe), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + f':</date> WARNING! There was an error in saving pipeline. It was saves as string'
     with open(os.path.join('results', subfolder, 'generation_plot.png'), 'wb') as handle:
         handle.write(global_control.tpot_status['plot_png'].getvalue())
 

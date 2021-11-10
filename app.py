@@ -153,13 +153,18 @@ def main():
         else:
             selected_dataset = gmc_interface.datasets[0]
 
+        selected_validation_part = global_control.last_selections_gmc['validation_part']
+        selected_cv = global_control.last_selections_gmc['cv']
+        selected_random_state = global_control.last_selections_gmc['random_state']
+
         if global_control.TEST_PIPELINES:
             p = global_control.TEST_PIPELINES.pop()
             global_control.TEST_PIPELINES.add(p)
             test_pipeline = p
         else:
             test_pipeline = 'No pipelines selected for test'
-        state = {'pipeline': selected_pipe, 'test_pipeline': test_pipeline, 'dataset': selected_dataset}
+        state = {'pipeline': selected_pipe, 'test_pipeline': test_pipeline, 'dataset': selected_dataset,
+                 'cv': selected_cv, 'validation_size': selected_validation_part, 'random_state': selected_random_state}
         return render_template('test.html', datasets=gmc_interface.datasets, pipelines=global_control.PIPELINES,
                                test_pipelines=global_control.TEST_PIPELINES,
                                state=state, free_threads=global_control.machine_info['free_threads'],
@@ -219,6 +224,9 @@ def main():
             cross_chance = int(request.form['cross_chance'])
             cross_method = int(request.form['cross_method'])
             random_state = int(request.form['random_state'])
+            global_control.last_selections_gmc['random_state'] = random_state
+            if random_state == 0:
+                random_state = None
             selection_type = int(request.form['selection_method'])
             mutation = int(request.form['mutation'])
             mutation_power = int(request.form['mutation_power'])
@@ -233,7 +241,6 @@ def main():
             global_control.last_selections_gmc['early_stop'] = early_stop
             global_control.last_selections_gmc['cross_chance'] = cross_chance
             global_control.last_selections_gmc['cross_method'] = cross_method
-            global_control.last_selections_gmc['random_state'] = random_state
             global_control.last_selections_gmc['selection_method'] = selection_type
             global_control.last_selections_gmc['mutation'] = mutation
             global_control.last_selections_gmc['mutation_power'] = mutation_power
@@ -252,10 +259,10 @@ def main():
             global_control.last_selections_gmc['preselection'] = preselection
             global_control.last_selections_gmc['fresh_genes'] = fresh_blood
 
-            if n_jobs == 0:
-                global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-                    "%d.%m.%Y|%H-%M-%S") + ':</date> Zero cores = zero work'
-                return redirect('/gmc')
+            # if n_jobs == 0:
+            #     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+            #         "%d.%m.%Y|%H-%M-%S") + ':</date> Zero cores = zero work'
+            #     return redirect('/gmc')
             gmc_interface.run_gmc_thread(selected_dataset, n_jobs=n_jobs, population=pop_size, generations=generations,
                                          validation_size=validation_size, cv=cv, early_stop=early_stop,
                                          crossover_rate=cross_chance, cross_method=cross_method,
@@ -279,6 +286,9 @@ def main():
             early_stop = int(request.form['early_stop'])
             cross_chance = int(request.form['cross_chance'])
             random_state = int(request.form['random_state'])
+            global_control.last_selections_tpot['random_state'] = random_state
+            if random_state == 0:
+                random_state = None
             mutation = int(request.form['mutation'])
             pipeline_time_limit = int(request.form['pipe_time']) * 60
 
@@ -288,15 +298,14 @@ def main():
             global_control.last_selections_tpot['cv'] = cv
             global_control.last_selections_tpot['early_stop'] = early_stop
             global_control.last_selections_tpot['cross_chance'] = cross_chance
-            global_control.last_selections_tpot['random_state'] = random_state
             global_control.last_selections_tpot['mutation'] = mutation
             global_control.last_selections_tpot['pipe_time'] = request.form['pipe_time']
             global_control.last_selections_tpot['validation_part'] = validation_size
 
-            if n_jobs == 0:
-                global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-                    "%d.%m.%Y|%H-%M-%S") + ':</date> Zero cores = zero work'
-                return redirect('/tpot')
+            # if n_jobs == 0:
+            #     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+            #         "%d.%m.%Y|%H-%M-%S") + ':</date> Zero cores = zero work'
+            #     return redirect('/tpot')
             gmc_interface.run_tpot_thread(file_name=selected_dataset, validation_size=validation_size, n_jobs=n_jobs,
                                           population=pop_size, offspring=offspring_size, generations=generations, cv=cv,
                                           early_stop=early_stop, crossover_rate=cross_chance, random_state=random_state,
@@ -324,8 +333,10 @@ def main():
             selected_dataset = request.form.get('datasets')
             n_jobs = request.form.get('n_jobs')
             cv = request.form.get('cv')
-            random_state = request.form.get('random_state')
-            global_control.last_selections['dataset'] = selected_dataset
+            random_state = int(request.form.get('random_state'))
+            global_control.last_selections_gmc['random_state'] = random_state
+            if random_state == 0:
+                random_state = None
             try:
                 show_roc = request.form["show_roc"]
             except KeyError:
@@ -335,6 +346,10 @@ def main():
             except KeyError:
                 t_test = False
             test_size = request.form.get('validation_size')
+
+            global_control.last_selections['dataset'] = selected_dataset
+            global_control.last_selections_gmc['validation_part'] = test_size
+            global_control.last_selections_gmc['cv'] = cv
 
             gmc_interface.start_test_thread(global_control.TEST_PIPELINES, selected_dataset, int(n_jobs), cv,
                                             random_state, show_roc, t_test, test_size)

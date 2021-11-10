@@ -222,8 +222,9 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     pop.partial_explore = partial_explore
 
     # For results reproducibility
-    random.seed(random_state)
-    np.random.seed(random_state)
+    if RANDOM_STATE is not None:
+        random.seed(random_state)
+        np.random.seed(random_state)
 
     start = datetime.now()
     init_stop_threads()
@@ -352,7 +353,9 @@ def init_population(pop_size: int, grid_type: str):
 
 def generate_random_individual(grid_type):
     # counter is used to avoid generating same individuals each time, but generate same results at re-run
-    np.random.seed(RANDOM_STATE + GENERATOR_COUNTER)
+    if RANDOM_STATE is not None:
+        np.random.seed(RANDOM_STATE + GENERATOR_COUNTER)
+        random.seed(RANDOM_STATE + GENERATOR_COUNTER)
     increase_counter()
     transformers = set()
     # randomly choose transformers
@@ -391,6 +394,7 @@ def generate_random_individual(grid_type):
                 search.fit(ORIGINAL_X_TRAIN, ORIGINAL_Y_TRAIN)
                 pipeline = search.best_estimator_
                 ind.__setattr__('pipeline', pipeline)
+                log.info('Pipeline preselection was successful')
                 return ind
             except:
                 log.error("Preselection (RandomizedSearchCV) failed. Choosing individual at random")
@@ -429,8 +433,9 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                                  dataset_rows=population.dataset_rows, dataset_attributes=population.dataset_attributes,
                                  dataset_classes=population.dataset_classes, random_state=RANDOM_STATE,
                                  failed_to_test=population.failed_to_test, slowpokes=population.slowpokes)
-
-    random.seed(RANDOM_STATE + GENERATOR_COUNTER)
+    if RANDOM_STATE is not None:
+        random.seed(RANDOM_STATE + GENERATOR_COUNTER)
+        np.random.seed(RANDOM_STATE + GENERATOR_COUNTER)
     increase_counter()
 
     log.debug(f'BEFORE CROSSOVER {len(next_generation.individuals)=}')
@@ -761,6 +766,7 @@ def uniform_crossover(key1, key2):
 def crossover(inv1: Individual, inv2: Individual, crossover_method):
     g1 = create_genome(inv1.pipeline)
     g2 = create_genome(inv2.pipeline)
+
     # Base child on random parent
     if random.random() > 0.5:
         g3 = g1

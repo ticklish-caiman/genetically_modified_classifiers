@@ -31,6 +31,7 @@ global machine_info
 global plots
 
 global queue
+global queue_tpot
 
 global PIPELINES
 global TEST_PIPELINES
@@ -50,7 +51,9 @@ def init_pipelines():
 
 def init_queue():
     global queue
+    global queue_tpot
     queue = []
+    queue_tpot = []
 
 
 def init_tpot_thread():
@@ -132,7 +135,6 @@ def initialize_status():
     status['status'] = '<br/><date>' + datetime.now().strftime("%d.%m.%Y|%H-%M-%S") + ':</date> GMC not working'
     status['scores'] = []
     status['avgs'] = []
-
 
 
 def initialize_tpot_status():

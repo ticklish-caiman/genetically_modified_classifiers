@@ -78,12 +78,12 @@
                            title='How likely it its for individual to mutate. Also determines chances for each parameter to mutate if the individual was selected for mutation'>
                     <hr>
                     <div style="text-align: right">
-                        Random state: <input type="number"
+                        Random state (0=None): <input type="number"
                                              name="random_state"
                                              style="width: 60px"
-                                             min="1"
+                                             min="0"
                                              max="100000"
-                                             value={{ state['random_state'] }}
+                                             value="{{ state['random_state'] }}"
                                                      step="1"
                                              class="slider"
                                              title='Important for reproducibility.'><br/>

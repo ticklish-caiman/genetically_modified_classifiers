@@ -127,15 +127,16 @@
                             <input name="fresh_blood" type="checkbox" value="True"
                                    {% if state['fresh_genes'] %}checked{% endif %}>
                             <hr>
-                            Random state: <input type="number"
+                            Random state (0=None): <input type="number"
                                                  name="random_state"
+                                                 id="random_state_gmc"
                                                  style="width: 60px"
-                                                 min="1"
+                                                 min="0"
                                                  max="100000"
-                                                 value={{ state['random_state'] }}
-                                                         step="1"
+                                                 value="{{ state['random_state'] }}"
+                                                 step="1"
                                                  class="slider"
-                                                 title='Important for reproducibility.'><br/>
+                                                 title='Important for reproducibility. Input 0 for no random seed.'><br/>
                             <hr>
                         </div>
                         <div style="text-align: right">

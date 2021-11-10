@@ -125,9 +125,7 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
                       n_jobs=n_jobs, pipeline_time_limit=pipeline_time_limit, preselection=preselection,
                       dataset_name=file_name, grid_type=grid, mutation_rate=mutation, mutation_power=mutation_power,
                       fresh_blood_mode=fresh_blood, partial_explore=partial_explore)
-    subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
-    # pop_with_all = pop.unpack_history(pop1)
-    save_results_gmc(pop1, subfolder_name)
+
     # best = pop.get_best_from_history(pop1.history, cv)
     # save_genome(best.genome, subfolder_name)
     log.info('GMC finished')
@@ -148,12 +146,24 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
     test_score = global_control.status['pipeline'].score(x_test, y_test)
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Test score:{test_score}'
+    global_control.status['best_test_score'] = test_score
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Evolution time:{global_control.status["time"]}'
-
+    subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
+    # pop_with_all = pop.unpack_history(pop1)
+    save_results_gmc(pop1, subfolder_name)
     global_control.machine_info['free_threads'] += n_jobs
+    # if global_control.machine_info['free_threads'] > global_control.machine_info['logical_cores']:
+    #     global_control.machine_info['free_threads'] = global_control.machine_info['logical_cores']
+    if len(global_control.queue) != 0:
+        global_control.queue[0].start()
+        global_control.machine_info['free_threads'] -= n_jobs
+        # global_control.queue[0].join()
+        del global_control.queue[0]
+        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + f':</date> Starting task from queue. Tasks left:{len(global_control.queue)}'
 
-    return pop1
+    # return pop1
 
 
 def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, generations=1000,
@@ -253,16 +263,26 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
                                         pipeline_time_limit,
                                         preselection, cv, cross_method, mutation, mutation_power, grid, fresh_blood,
                                         partial_explore))
-    if n_jobs <= global_control.machine_info['free_threads']:
+    if n_jobs != 0:
         # If we want the app to keep running, even when webapp gets reloaded we should use Process instead of Thread
         # gmc_thread = Process(target=run_evolve, args=(x_train, y_train), name="gmc_process")
         gmc_thread.start()
         global_control.machine_info['free_threads'] -= n_jobs
     else:
+        # safe for later, but with n_jobs = all available cores
+        gmc_thread = threading.Thread(target=run_evolve_custom, name="gmc_thread",
+                                      args=(file_name, validation_size, global_control.machine_info['logical_cores'],
+                                            population, generations,
+                                            elitism,
+                                            random_state, selection_type, crossover_rate, early_stop,
+                                            pipeline_time_limit,
+                                            preselection, cv, cross_method, mutation, mutation_power, grid, fresh_blood,
+                                            partial_explore))
         global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-            "%d.%m.%Y|%H-%M-%S") + ":</date> Not enough cores available."
-        print(f'Saving thread for later: {gmc_thread=}')
+            "%d.%m.%Y|%H-%M-%S") + ":</date> Not enough cores available. Adding to queue."
         global_control.queue.append(gmc_thread)
+        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + f":</date> Tasks in queue:{len(global_control.queue)}"
 
 
 def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, generations=100,
@@ -302,14 +322,30 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> TPOT finished in:{datetime.now() - global_control.tpot_status["start_time"]}'
     global_control.machine_info['free_threads'] += n_jobs
-
-    subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
+    test_score = global_control.tpot.score(x_test, y_test)
     update_plot_tpot(global_control.tpot.evaluated_individuals_)
+    global_control.tpot_status['best_test_score'] = test_score
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> CV average score:{global_control.tpot_status["best_score"]}'
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f':</date> Test score:{test_score}'
+    subfolder_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
+
     save_results_tpot(subfolder_name)
 
-    log.info('Tpot finished')
-    global_control.tpot_status['running'] = False
+    log.info('Tpot task finished')
+    if len(global_control.queue_tpot) != 0:
+        global_control.tpot_status['best_score'] = 0.
+        global_control.tpot_status['last'] = 0
 
+        global_control.queue_tpot[0].start()
+        global_control.machine_info['free_threads'] -= n_jobs
+        # global_control.queue[0].join()
+        del global_control.queue_tpot[0]
+        global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + f':</date> Starting task from queue. Tasks left:{len(global_control.queue_tpot)}'
+        return 0
+    global_control.tpot_status['running'] = False
 
 
 def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, offspring=20, generations=1000,
@@ -365,17 +401,24 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
                                                         random_state, crossover_rate, early_stop,
                                                         pipeline_time_limit, cv, mutation))
 
-    if n_jobs <= global_control.machine_info['free_threads']:
+    if n_jobs != 0:
         global_control.tpot_thread.start()
         global_control.machine_info['free_threads'] -= n_jobs
         if 'status_update_thread' not in running_threads:
             global_control.status_thread = threading.Thread(name='status_update_thread', target=update_tpot_status)
             global_control.status_thread.start()
     else:
+        # safe for later, but with n_jobs = all available cores
+        global_control.tpot_thread = threading.Thread(target=run_tpot_custom, name="tpot_thread",
+                                                      args=(file_name, validation_size,
+                                                            global_control.machine_info['logical_cores'], population,
+                                                            generations,
+                                                            offspring,
+                                                            random_state, crossover_rate, early_stop,
+                                                            pipeline_time_limit, cv, mutation))
+        global_control.queue_tpot.append(global_control.tpot_thread)
         global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-            "%d.%m.%Y|%H-%M-%S") + ":</date> Not enough cores available."
-        print(f'Saving thread for later: {global_control.tpot_thread=}')
-        global_control.queue.append(global_control.tpot_thread)
+            "%d.%m.%Y|%H-%M-%S") + f":</date> Starting task from queue. Tasks left:{len(global_control.queue_tpot)}"
 
 
 # [status, best_score, pipeline, time, bar, plot]
@@ -549,7 +592,7 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
     dataset = adjust_dataset(dataset)
     features = dataset.drop('class', axis=1).values
     x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=test_size,
-                                                        random_state=int(random_state))
+                                                        random_state=random_state)
 
     if not isinstance(cv, LeaveOneOut):
         cv = int(cv)
@@ -562,8 +605,20 @@ def test_pipelines(pipelines: [], file_name: str, n_jobs=1, cv=10, random_state=
                 if hasattr(pipeline, 'random_state'):
                     setattr(pipeline, 'random_state', int(random_state))
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+                    "%d.%m.%Y|%H-%M-%S") + f":</date> Random state: {random_state}"
+                global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+                    "%d.%m.%Y|%H-%M-%S") + f":</date> CV: {cv}"
+                global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
                     "%d.%m.%Y|%H-%M-%S") + f":</date> Testing: {pipeline}"
-                cv_score = cross_val_score(pipeline, x_train, y_train, cv=cv, n_jobs=n_jobs, error_score="raise")
+                try:
+                    cv_score = cross_val_score(pipeline, x_train, y_train, cv=cv, n_jobs=n_jobs, error_score="raise")
+                except ValueError as e:
+                    global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
+                        "%d.%m.%Y|%H-%M-%S") + f":</date> Fitting error: {e}"
+                    log.error(e.__class__)
+                    log.error(e)
+                    global_control.machine_info['free_threads'] += n_jobs
+                    return 0
                 # print(f'\n\nTesting:{pipeline}\n{sum(cv_score)/len(cv_score)=}\n{len(x_train)=}')
                 test_score = pipeline.fit(x_train, y_train).score(x_test, y_test)
                 global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
