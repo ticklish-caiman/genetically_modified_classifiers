@@ -192,10 +192,9 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
     # if global_control.machine_info['free_threads'] > global_control.machine_info['logical_cores']:
     #     global_control.machine_info['free_threads'] = global_control.machine_info['logical_cores']
     if len(global_control.queue) != 0:
-        global_control.queue[0].start()
+        global_control.queue.pop(0).start()
         global_control.machine_info['free_threads'] -= n_jobs
-        # global_control.queue[0].join()
-        del global_control.queue[0]
+        # del global_control.queue[0]
         global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
             "%d.%m.%Y|%H-%M-%S") + f':</date> Starting task from queue. Tasks left:{len(global_control.queue)}'
 
@@ -289,6 +288,7 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
                     offspring=20,
                     random_state=13, crossover_rate=0.1, early_stop=50,
                     pipeline_time_limit=120, cv=10, mutation=0.2):
+    global_control.tpot_status['running'] = True
     try:
         dataset = pd.read_csv('data-CSV/' + file_name, delimiter=',')
     except FileNotFoundError:
@@ -298,6 +298,8 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
     x_train, x_test, y_train, y_test = train_test_split(features, dataset['class'].values, test_size=validation_size,
                                                         random_state=random_state)
 
+    global_control.init_tpot()
+    global_control.init_stop_tpot()
     global_control.tpot = TPOTClassifier(cv=cv, generations=generations, verbosity=2, population_size=population,
                                          offspring_size=offspring,
                                          mutation_rate=mutation,
@@ -326,8 +328,6 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
         "%d.%m.%Y|%H-%M-%S") + f":</date> Random state: {random_state}."
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
-    global_control.init_tpot()
-    global_control.init_stop_tpot()
     global_control.tpot_status[
         'title'] = f"TPOT \nPS/OS:{population}/{offspring} G:{generations} CO/MC:{crossover_rate}/{mutation} CV:{cv} ES:{early_stop}"
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
@@ -366,11 +366,8 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
     if len(global_control.queue_tpot) != 0:
         global_control.tpot_status['best_score'] = 0.
         global_control.tpot_status['last'] = 0
-
-        global_control.queue_tpot[0].start()
+        global_control.queue_tpot.pop(0).start()
         global_control.machine_info['free_threads'] -= n_jobs
-        # global_control.queue[0].join()
-        del global_control.queue_tpot[0]
         global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
             "%d.%m.%Y|%H-%M-%S") + f':</date> Starting task from queue. Tasks left:{len(global_control.queue_tpot)}'
         return 0
@@ -381,7 +378,6 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
                     random_state=13, crossover_rate=0.1, early_stop=50,
                     pipeline_time_limit=120, cv=10, mutation=0.2):
     running_threads = []
-    global_control.tpot_status['running'] = True
     for thread in threading.enumerate():
         running_threads.append(thread.name)
     log.debug(running_threads)
@@ -753,5 +749,3 @@ def start_test_thread(pipelines: [], file_name: str, n_jobs=1, cv=10, random_sta
     else:
         global_control.TEST_STATUS['status'] += '<br/><date>' + datetime.now().strftime(
             "%d.%m.%Y|%H-%M-%S") + ":</date> Not enough cores available."
-        print(f'Saving thread for later: {global_control.tpot_thread=}')
-        global_control.queue.append(global_control.tpot_thread)
