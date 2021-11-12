@@ -194,7 +194,6 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
     if len(global_control.queue) != 0:
         global_control.queue.pop(0).start()
         global_control.machine_info['free_threads'] -= n_jobs
-        # del global_control.queue[0]
         global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
             "%d.%m.%Y|%H-%M-%S") + f':</date> Starting task from queue. Tasks left:{len(global_control.queue)}'
 
