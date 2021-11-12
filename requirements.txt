@@ -12,5 +12,4 @@ stopit>=1.1.2
 lightgbm>=3.2.1
 plotly>=5.3.1
 py-cpuinfo>=8.0.0
-deepdiff>=5.5.0
 tpot>=0.11.7

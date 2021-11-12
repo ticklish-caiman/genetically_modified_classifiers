@@ -21,6 +21,7 @@ from tpot.builtins import StackingEstimator, OneHotEncoder
 from xgboost import XGBClassifier
 
 from utils import adjust_dataset
+from scipy.stats import friedmanchisquare, ttest_rel, wilcoxon
 
 print(sys.maxsize)
 
@@ -33,18 +34,23 @@ tpot_bests_biodeg.append(
     make_pipeline(StackingEstimator(estimator=LogisticRegression(C=15.0, dual=False, penalty="l2")),
                   XGBClassifier(learning_rate=0.1, max_depth=3, min_child_weight=2, n_estimators=100,
                                 nthread=1, subsample=0.9500000000000001)))
-tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()), MinMaxScaler(),
-                                       ExtraTreesClassifier(bootstrap=True, criterion="entropy",
-                                                            max_features=0.9500000000000001, min_samples_leaf=1,
-                                                            min_samples_split=10, n_estimators=100)))
-tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()),
-                                       RandomForestClassifier(bootstrap=False, criterion="entropy", max_features=0.3,
-                                                              min_samples_leaf=1, min_samples_split=6,
-                                                              n_estimators=100)))
-tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()),
-                                       ExtraTreesClassifier(bootstrap=True, criterion="entropy",
-                                                            max_features=0.7000000000000001, min_samples_leaf=3,
-                                                            min_samples_split=2, n_estimators=100)))
+
+# tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()), MinMaxScaler(),
+#                                        ExtraTreesClassifier(bootstrap=True, criterion="entropy",
+#                                                             max_features=0.9500000000000001, min_samples_leaf=1,
+#                                                             min_samples_split=10, n_estimators=100)))
+
+# tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()),
+#                                        RandomForestClassifier(bootstrap=False, criterion="entropy", max_features=0.3,
+#                                                               min_samples_leaf=1, min_samples_split=6,
+#                                                               n_estimators=100)))
+
+# tpot_bests_biodeg.append(make_pipeline(StackingEstimator(estimator=GaussianNB()),
+#                                        ExtraTreesClassifier(bootstrap=True, criterion="entropy",
+#                                                             max_features=0.7000000000000001, min_samples_leaf=3,
+#                                                             min_samples_split=2, n_estimators=100)))
+
+
 
 dataset = pd.read_csv('data-CSV/biodeg.csv', delimiter=',')
 dataset = adjust_dataset(dataset)
@@ -66,31 +72,32 @@ std = []
 #     results_cv.append(cv)
 #     results_test.append(x.score(x_test, y_test))
 
-tpot_bests_biodeg[0] = Pipeline(steps=[('robustscaler', RobustScaler(quantile_range=(2, 5), with_scaling=False)), (
-'pca', PCA(iterated_power=12, n_components=15, random_state=13, tol=0.721712793981146)), ('mlpclassifier',
-                                                                                          MLPClassifier(
-                                                                                              alpha=0.0002461966497039305,
-                                                                                              beta_1=0.8, beta_2=0.8,
-                                                                                              epsilon=6.744452314776567e-09,
-                                                                                              hidden_layer_sizes=389,
-                                                                                              learning_rate='invscaling',
-                                                                                              learning_rate_init=5.838171481172468e-05,
-                                                                                              max_fun=1066090,
-                                                                                              max_iter=4864,
-                                                                                              momentum=0.6,
-                                                                                              n_iter_no_change=3119,
-                                                                                              power_t=0.17848897677742048,
-                                                                                              random_state=13,
-                                                                                              solver='lbfgs',
-                                                                                              tol=8.645569393437859e-09,
-                                                                                              validation_fraction=0.05158356193854937))])
-for n in range(1):
-    cv = cross_val_score(tpot_bests_biodeg[0], x_train, y_train, cv=10, n_jobs=-1,
+# tpot_bests_biodeg[0] = Pipeline(steps=[('robustscaler', RobustScaler(quantile_range=(2, 5), with_scaling=False)), (
+#     'pca', PCA(iterated_power=12, n_components=15, random_state=13, tol=0.721712793981146)), ('mlpclassifier',
+#                                                                                               MLPClassifier(
+#                                                                                                   alpha=0.0002461966497039305,
+#                                                                                                   beta_1=0.8,
+#                                                                                                   beta_2=0.8,
+#                                                                                                   epsilon=6.744452314776567e-09,
+#                                                                                                   hidden_layer_sizes=389,
+#                                                                                                   learning_rate='invscaling',
+#                                                                                                   learning_rate_init=5.838171481172468e-05,
+#                                                                                                   max_fun=1066090,
+#                                                                                                   max_iter=4864,
+#                                                                                                   momentum=0.6,
+#                                                                                                   n_iter_no_change=3119,
+#                                                                                                   power_t=0.17848897677742048,
+#                                                                                                   random_state=13,
+#                                                                                                   solver='lbfgs',
+#                                                                                                   tol=8.645569393437859e-09,
+#                                                                                                   validation_fraction=0.05158356193854937))])
+for n in range(len(tpot_bests_biodeg)):
+    cv = cross_val_score(tpot_bests_biodeg[n], x_train, y_train, cv=10, n_jobs=-1,
                          error_score="raise")
-    tpot_bests_biodeg[0].fit(x_train, y_train)
-    pipes_str.append(str(tpot_bests_biodeg[0]))
+    tpot_bests_biodeg[n].fit(x_train, y_train)
+    pipes_str.append(str(tpot_bests_biodeg[n]))
     results_cv.append(cv)
-    results_test.append(tpot_bests_biodeg[0].score(x_test, y_test))
+    results_test.append(tpot_bests_biodeg[n].score(x_test, y_test))
     std.append(stdev(cv))
 
 cv_averages = []
@@ -101,6 +108,19 @@ for i in range(len(pipes_str)):
         f"{pipes_str[i]}\nCV:{results_cv[i]}\nAVG:{sum(results_cv[i]) / len(results_cv[i])}\nTest:{results_test[i]}\nSTDEV:{std[i]}")
 
 print(f"STDEV IN ALL RUNS:{stdev(cv_averages)}")
+
+# print(ttest_rel(results_cv[0], results_cv[1]).pvalue)
+#
+# t, p = paired_ttest_kfold_cv(estimator1=clf1,
+#                               estimator2=clf2,
+#                               X=X, y=y,
+#                               random_seed=1)
+# print('t statistic: %.3f' % t)
+# print('p value: %.3f' % p)
+print('WILCOXON')
+print(wilcoxon(results_cv[0], results_cv[1]))
+print("T-test")
+print(ttest_rel(results_cv[0], results_cv[1]))
 
 # from sklearn.utils import all_estimators
 #
@@ -189,7 +209,6 @@ pipe9 = Pipeline(steps=[('minmaxscaler', MinMaxScaler(feature_range=(6, 9))),
 
 pipe10 = Pipeline(steps=[('baggingclassifier',
                           BaggingClassifier(n_estimators=10, random_state=13))])
-
 
 # StackingClassifier() - can we use it to 'crossover' different types of classifiers?
 # ('svc', SVC(C=50.0, kernel='poly', random_state=13)),

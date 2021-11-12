@@ -116,6 +116,42 @@ def run_evolve_custom(file_name, validation_size=0.1, n_jobs=1, population=20, g
                                                         random_state=random_state)
 
     global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Validation part set to {validation_size}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-validation: {cv}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Population size set to {population}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Generations number set to {generations}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Elitism set to {elitism}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Mutation rate set to {mutation}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Mutation power set to {mutation_power}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Pipeline time limit set to {pipeline_time_limit}s."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Early stop: {early_stop}"
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Selection method: {selection_type}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-over method: {cross_method}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-over chance: {crossover_rate}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Random state: {random_state}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Preselection: {preselection}."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Dropping {partial_explore} of original dataset to improve performance."
+
+    global_control.status[
+        'title'] = f"GMC \nPS/E:{population}/{elitism} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop} GRID:{grid}"
+
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population for {file_name}'
     global_control.status['best_score'] = 0.0
     pop1 = pop.evolve(population=population, generations=generations, validation_method=cv,
@@ -220,42 +256,6 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
     if cv == 101:
         cv = LeaveOneOut()
 
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Validation part set to {validation_size}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-validation: {cv}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Population size set to {population}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Generations number set to {generations}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Elitism set to {elitism}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Mutation rate set to {mutation}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Mutation power set to {mutation_power}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Pipeline time limit set to {pipeline_time_limit}s."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Early stop: {early_stop}"
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Selection method: {selection_type}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-over method: {cross_method}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-over chance: {crossover_rate}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Random state: {random_state}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Preselection: {preselection}."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
-    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Dropping {partial_explore} of original dataset to improve performance."
-
-    global_control.status[
-        'title'] = f"GMC \nPS/E:{population}/{elitism} G:{generations} S:{selection_type} CR/CM:{crossover_rate}/{cross_method} MC/MP:{mutation}/{mutation_power} ES:{early_stop} GRID:{grid}"
-
     gmc_thread = threading.Thread(target=run_evolve_custom, name="gmc_thread",
                                   args=(file_name, validation_size, n_jobs, population, generations,
                                         elitism,
@@ -307,6 +307,30 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
                                          )
 
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Validation part set to {validation_size}."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-validation: {cv}."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Population size set to {population}."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Generations number set to {generations}."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Mutation rate set to {mutation}."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Pipeline time limit set to {pipeline_time_limit}s."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Early stop: {early_stop}"
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-over chance: {crossover_rate}."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Random state: {random_state}."
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
+    global_control.init_tpot()
+    global_control.init_stop_tpot()
+    global_control.tpot_status[
+        'title'] = f"TPOT \nPS/OS:{population}/{offspring} G:{generations} CO/MC:{crossover_rate}/{mutation} CV:{cv} ES:{early_stop}"
+    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> Initializing population for {file_name}'
     global_control.tpot_status['best_score'] = 0.0
     global_control.tpot_status['random_state'] = random_state
@@ -322,9 +346,14 @@ def run_tpot_custom(file_name, validation_size=0.1, n_jobs=1, population=20, gen
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> TPOT finished in:{datetime.now() - global_control.tpot_status["start_time"]}'
     global_control.machine_info['free_threads'] += n_jobs
-    test_score = global_control.tpot.score(x_test, y_test)
+    try:
+        test_score = global_control.tpot.score(x_test, y_test)
+        global_control.tpot_status['best_test_score'] = test_score
+    except AttributeError as e:
+        global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
+            "%d.%m.%Y|%H-%M-%S") + f':</date> ERROR:{e}'
+        global_control.tpot_status['best_test_score'] = 'Test error'
     update_plot_tpot(global_control.tpot.evaluated_individuals_)
-    global_control.tpot_status['best_test_score'] = test_score
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
         "%d.%m.%Y|%H-%M-%S") + f':</date> CV average score:{global_control.tpot_status["best_score"]}'
     global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
@@ -371,30 +400,6 @@ def run_tpot_thread(file_name, validation_size=0.1, n_jobs=1, population=20, off
     if cv == 101:
         cv = LeaveOneOut()
 
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Validation part set to {validation_size}."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-validation: {cv}."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Population size set to {population}."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Generations number set to {generations}."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Mutation rate set to {mutation}."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Pipeline time limit set to {pipeline_time_limit}s."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Early stop: {early_stop}"
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Cross-over chance: {crossover_rate}."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Random state: {random_state}."
-    global_control.tpot_status['status'] += '<br/><date>' + datetime.now().strftime(
-        "%d.%m.%Y|%H-%M-%S") + f":</date> Using {n_jobs} logical cores."
-    global_control.init_tpot()
-    global_control.init_stop_tpot()
-    global_control.tpot_status[
-        'title'] = f"TPOT \nPS/OS:{population}/{offspring} G:{generations} CO/MC:{crossover_rate}/{mutation} CV:{cv} ES:{early_stop}"
     global_control.tpot_thread = threading.Thread(target=run_tpot_custom, name="tpot_thread",
                                                   args=(file_name, validation_size, n_jobs, population, generations,
                                                         offspring,

@@ -9,7 +9,6 @@ from dataclasses import dataclass
 # import mkl
 import stopit
 import traceback
-from deepdiff import DeepDiff
 from operator import attrgetter
 from datetime import datetime
 import cpuinfo
@@ -102,6 +101,7 @@ TIME_LIMIT_GENERATION = 1200
 TIME_LIMIT_PIPELINE = 600
 GUI = True
 GENERATOR_COUNTER = 1
+HISTORY_CACHE = []
 
 
 def set_time_limits(time_s, generations):
@@ -163,6 +163,9 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     global_control.status['scores'] = []
     global_control.status['avgs'] = []
 
+    global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
+        "%d.%m.%Y|%H-%M-%S") + f":</date> Using {grid_type} grid."
+
     log.info(f'MAX_N_COMPONENTS was set to: {MAX_N_COMPONENTS}')
     log.info(f'TIME_LIMIT_POPULATION was set to: {TIME_LIMIT_GENERATION}')
     log.info(f'TIME_LIMIT_PIPELINE was set to: {TIME_LIMIT_PIPELINE}')
@@ -194,19 +197,6 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
                 "%d.%m.%Y|%H-%M-%S") + ':</date> Elitism must be smaller than population size. Auto adjusted to (pop_size-2)'
         elitism = len(pop.individuals) - 2
 
-    if grid_type == 'GMC-minimal':
-        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-            "%d.%m.%Y|%H-%M-%S") + ":</date> Using minimal grid."
-    if grid_type == 'GMC-big':
-        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-            "%d.%m.%Y|%H-%M-%S") + ":</date> Using big grid."
-    if grid_type == 'GMC-extreme':
-        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-            "%d.%m.%Y|%H-%M-%S") + ":</date> Using extreme grid."
-    if grid_type == 'TPOT-ish':
-        global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
-            "%d.%m.%Y|%H-%M-%S") + ":</date> Using grid similar to TPOT one."
-
     if fresh_blood_mode:
         global_control.status['status'] += '<br/><date>' + datetime.now().strftime(
             "%d.%m.%Y|%H-%M-%S") + ":</date> Fresh genes allowed."
@@ -229,6 +219,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
     start = datetime.now()
     init_stop_threads()
     for i in range(generations):
+        gen_start = datetime.now()
         progress = ((i + 1) / generations * 100)
         if global_control.stop_threads:
             log.info('Task stopped - returning last population')
@@ -260,6 +251,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
             # don't store pipeline in history to safe memory
             u.pipeline_string = str(u.pipeline)
             u.pipeline = None
+            HISTORY_CACHE.append(u)
         pop.history.append(unique)
         generation_best_individual = get_best_from_list(pop.individuals)
         generation_best_score = generation_best_individual.score
@@ -312,17 +304,17 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
         if GUI:
             update_plot(pop)
             if 'time' in global_control.status:
-                #                                   print(f"{type(global_control.status['time'])=}")
                 update_status(
-                    f"Time elapsed:{global_control.status['time']}|Last generation average fitting time:{average_time(pop.individuals)}")
+                    f"Time elapsed:{global_control.status['time']}| Last generation average fitting time:{average_time(pop.individuals)}")
 
         log.info('Selection and crossover')
         pop, hall_of_fame = selection_and_crossover(population=pop, elitism=elitism, hall_of_fame=hall_of_fame,
                                                     selection_type=selection_type, crossover_rate=crossover_rate,
                                                     crossover_method=cross_method, mutation_rate=mutation_rate,
                                                     mutation_power=mutation_power)
-
+        log.debug(f'Generation tested in:{datetime.now() - gen_start}')
         log.info('Population size: ' + str(len(pop.individuals)))
+
     if GUI:
         update_status('Final validation')
     pop = test_population(pop, validation_method, x_train, y_train, grid_type)
@@ -411,17 +403,19 @@ def generate_random_individual(grid_type):
     #          len(grid)=5836800000
     # it seems to only happen with TPOTish grid and every call, even grid[0] throws IE
     # for now recursive fix was applied
-    random_grid_index = np.random.randint(0, len(grid) - 1)
     try:
+        random_grid_index = np.random.randint(0, len(grid) - 1)
         random_individual_grid = grid[random_grid_index]
+        pipeline.set_params(**random_individual_grid)
+        ind.__setattr__('grid_used', random_individual_grid)
     except IndexError:
         log.error(f'Random grid selection failed.')
         return generate_random_individual(grid_type)
+    except ValueError:
+        log.error(f'No grid for individual (normal on TPOT-ish grid). Individual will be created on default parameters')
 
-    pipeline.set_params(**random_individual_grid)
     log.debug(f'Random pipeline: {pipeline}')
     ind.__setattr__('pipeline', pipeline)
-    ind.__setattr__('grid_used', random_individual_grid)
     return ind
 
 
@@ -524,23 +518,19 @@ def test_individual(population: Population, x: Individual, validation_method, x_
         log.info('No genome found. Generating genome.')
         x.genome = create_genome(x.pipeline)
     if x.score is None:
-        for y in unpack_history(population).individuals:
-            # if x.genome == y.genome and y.score is not None:
-            # DeepDiff also returns what exactly didn't match
-            if y.score is not None and not DeepDiff(x.genome, y.genome, get_deep_distance=True):
+        start = datetime.now()
+        for y in HISTORY_CACHE:
+            # DeepDiff also returns what exactly didn't match - totally not worth it - too slow!
+            # if y.score is not None and not DeepDiff(x.genome, y.genome):
+            if y.score is not None and x.genome == y.genome:
                 log.warning(
                     f'\nIdentical pipeline was already tested. If you get this message often - increase genes variety ('
                     f'bigger pop, more mutation/crossover, wider param_grid).\nPipeline 1:{x.pipeline} \nPipeline 2:{y.pipeline} \nGenes 1:{x.genome} \nGenes 2:{y.genome}')
                 # recreate pipeline for historical individual
                 y.pipeline = create_pipeline(y.genome)
                 return y, population
-                # log.debug('Generating random individual')
-                # print(f'{DeepDiff(x.genome, y.genome, significant_digits=10)=}')
-                # x = generate_random_individual(grid_type)
-                # x.genome = create_genome(x.pipeline)
-                # return test_individual(population, generate_random_individual(grid_type), validation_method,
-                #                        x_train,
-                #                        y_train, grid_type)
+
+        log.debug(f'History checked in:{datetime.now() - start}')
         log.debug('Passing pipeline to test:' + str(x.pipeline))
         with stopit.ThreadingTimeout(TIME_LIMIT_PIPELINE) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
@@ -548,7 +538,6 @@ def test_individual(population: Population, x: Individual, validation_method, x_
             try:
                 cv = cross_val_score(x.pipeline, x_train, y_train, cv=validation_method, n_jobs=N_JOBS,
                                      error_score="raise")
-                # print(f'\n\nTesting:{x.pipeline}\n{sum(cv)/len(cv)=}\n\n{x_train}')
             except (TypeError, ValueError) as e:
                 population.failed_to_test.append(x)
                 log.error(f"FITTING ERROR\n{x.pipeline}\nRESTORING TRAINING SET, GENERATING NEW INDIVIDUAL")
@@ -557,7 +546,6 @@ def test_individual(population: Population, x: Individual, validation_method, x_
                 x_train = ORIGINAL_X_TRAIN.copy()
                 y_train = ORIGINAL_Y_TRAIN.copy()
                 # x = generate_random_individual(grid_type)
-                start = datetime.now()
                 try:
                     return test_individual(population, generate_random_individual(grid_type), validation_method,
                                            x_train, y_train, grid_type)
