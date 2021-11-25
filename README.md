@@ -3,7 +3,9 @@ This is a simple flask-based app that allows you to experiment with evolutonary 
 Customize parameters to get best results for chosen dataset. You can include your own data - for now only CSV files are supported.
 
 # Preview
-https://user-images.githubusercontent.com/91501936/143504105-7fe495ec-3fb6-4051-9592-3a1877640e26.mp4
+https://user-images.githubusercontent.com/91501936/143504595-230f2cc4-cf10-43dc-abf9-78fb95c1b103.mp4
+
+
 
 
 
