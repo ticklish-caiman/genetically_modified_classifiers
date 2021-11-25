@@ -250,6 +250,8 @@ def run_gmc_thread(file_name, validation_size=0.1, n_jobs=1, population=20, gene
             selection_type = 'tournament15'
         if selection_type == 4:
             selection_type = 'tournament20'
+        if selection_type == 5:
+            selection_type = 'ranking'
 
     if cv == 101:
         cv = LeaveOneOut()
@@ -643,7 +645,7 @@ def generate_roc(cv, x_train, y_train, pipeline, file_name):
     y = y_train
     X, y = X[y != 2], y[y != 2]
 
-    cv = StratifiedKFold(n_splits=cv)
+    cv = StratifiedKFold(n_splits=cv, shuffle=True)
     classifier = pipeline
 
     tprs = []

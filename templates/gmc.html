@@ -69,7 +69,7 @@
                            title='Type of method used for mixing genes'>
                     <div class="slider_text">Selection method: <span id="selection_method"></span></div>
                     <input type="range" name="selection_method"
-                           min="0" max="4" value="{{ state['selection_method'] }}"
+                           min="0" max="5" value="{{ state['selection_method'] }}"
                            class="slider" id="selection_method_gmc"
                            title='Type of method used for selecting individuals for cross-over'>
 
@@ -128,15 +128,15 @@
                                    {% if state['fresh_genes'] %}checked{% endif %}>
                             <hr>
                             Random state (0=None): <input type="number"
-                                                 name="random_state"
-                                                 id="random_state_gmc"
-                                                 style="width: 60px"
-                                                 min="0"
-                                                 max="100000"
-                                                 value="{{ state['random_state'] }}"
-                                                 step="1"
-                                                 class="slider"
-                                                 title='Important for reproducibility. Input 0 for no random seed.'><br/>
+                                                          name="random_state"
+                                                          id="random_state_gmc"
+                                                          style="width: 60px"
+                                                          min="0"
+                                                          max="100000"
+                                                          value="{{ state['random_state'] }}"
+                                                          step="1"
+                                                          class="slider"
+                                                          title='Important for reproducibility. Input 0 for no random seed.'><br/>
                             <hr>
                         </div>
                         <div style="text-align: right">
@@ -288,6 +288,8 @@
                 output11.innerHTML = 'tournament (size 15)';
             } else if (this.value == 4) {
                 output11.innerHTML = 'tournament (size 20)';
+            } else if (this.value == 5) {
+                output11.innerHTML = 'ranking';
             } else {
                 output11.innerHTML = this.value;
             }

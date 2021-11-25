@@ -218,6 +218,7 @@ def evolve(population, generations: int, validation_method, x_train, y_train, el
 
     start = datetime.now()
     init_stop_threads()
+
     for i in range(generations):
         gen_start = datetime.now()
         progress = ((i + 1) / generations * 100)
@@ -354,7 +355,7 @@ def generate_random_individual(grid_type):
     for x in range(np.random.randint(0, 3)):
         transformers.add(np.random.choice(TRANSFORMERS))
 
-    param_grid, name_object_tuples = get_min_param_grid_and_tuple_list(transformers)
+    param_grid, name_object_tuples = get_random_param_grid_and_tuple_list(transformers)
 
     clf = np.random.choice(CLASSIFIERS)
     log.debug(f'Random classifier:{clf=}')
@@ -456,6 +457,9 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                 next_generation.individuals.append(
                     crossover(tournament(population.individuals, 20), tournament(population.individuals, 20),
                               crossover_method))
+            if selection_type == 'ranking':
+                next_generation.individuals.append(
+                    crossover(ranking(population.individuals, 0), ranking(population.individuals, 1), crossover_method))
         else:
             if selection_type == 'roulette':
                 next_generation.individuals.append(copy.deepcopy(roulette(population.individuals)))
@@ -467,6 +471,8 @@ def selection_and_crossover(population: Population, elitism: int, hall_of_fame: 
                 next_generation.individuals.append(copy.deepcopy(tournament(population.individuals, 15)))
             if selection_type == 'tournament20':
                 next_generation.individuals.append(copy.deepcopy(tournament(population.individuals, 20)))
+            if selection_type == 'ranking':
+                next_generation.individuals.append(copy.deepcopy(ranking(population.individuals, 0)))
     log.debug(f'AFTER CROSSOVER {len(next_generation.individuals)=}')
 
     log.info(
@@ -674,6 +680,11 @@ def tournament(individuals, tournament_size):
     return arena[0]
 
 
+def ranking(individuals, i):
+    individuals.sort(key=lambda x: x.score, reverse=True)
+    return individuals[i]
+
+
 def get_best_from_pop_test(pop, x_train, y_train, validation_method):
     scores = []
     pop2 = []
@@ -760,10 +771,7 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
         g3 = g1
     else:
         g3 = g2
-    # print(f'First parent genes:{g1}')
-    # print(f'Second parent genes{g2}: ')
     keys_to_skip = {'classifier_type', 'verbose', 'random_state', 'gpu_id'}
-
     # mixing common keys
     for key in g1:
         if key in g2:
@@ -775,7 +783,6 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
                         continue
                 except (TypeError, ValueError):
                     continue
-                # always check if is bool first if you also checking if is int, remember to add continue/break
                 if isinstance(g1[key], bool) and isinstance(g2[key], bool):
                     if random.random() > 0.5:
                         g3[key] = g1[key]
@@ -788,7 +795,6 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
                         g3[key] = g1[key]
                     else:
                         g3[key] = g2[key]
-                    # print(f'Random string from one of parents:{g3[key]}')
                     continue
 
                 if crossover_method == 'average':
@@ -806,8 +812,6 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
                         split1 = g1[key] // 1, g1[key] % 1
                         split2 = g2[key] // 1, g2[key] % 1
-                        # print(f'{split1=}')
-                        # print(f'{split2=}')
                         before_dec = single_point_crossover(int(split1[0]), int(split2[0]))
                         # scientific notation eg 1e-09 will cause IndexError in split function
                         # therefore we have to make sure it's in positional notation
@@ -826,12 +830,8 @@ def crossover(inv1: Individual, inv2: Individual, crossover_method):
                         continue
                 elif crossover_method == 'uniform':
                     if isinstance(g1[key], float) and isinstance(g2[key], float):
-                        # print(f'{g1[key]=}')
-                        # print(f'{g2[key]=}')
                         split1 = g1[key] // 1, g1[key] % 1
                         split2 = g2[key] // 1, g2[key] % 1
-                        # print(f'{split1=}')
-                        # print(f'{split2=}')
                         before_dec = uniform_crossover(int(split1[0]), int(split2[0]))
                         if split1[1] != 0.0:
                             split1 = split1[0], np.format_float_positional(split1[1])
@@ -1135,26 +1135,21 @@ def update_param_grid_big(clf, param_grid):
         param_grid.update(dict(
             bernoullinb__alpha=[0.1, 1.0],
             bernoullinb__binarize=[None]))
-        # bernoullinb__binarize=np.linspace(start=0.0, stop=1.0, num=3)))
-
     if isinstance(clf, GaussianNB):
         param_grid.update(dict(
             gaussiannb__var_smoothing=np.linspace(start=1e-14, stop=1e-1, num=3)))
-
     if isinstance(clf, KNeighborsClassifier):
         param_grid.update({
             # Expected n_neighbors <= n_samples.
             # 'kd_tree' causes -> DataConversionWarning: A column-vector y was passed when a 1d array was expected
-            'kneighborsclassifier__n_neighbors': np.arange(start=1, stop=MAX_N_COMPONENTS,
-                                                           step=5),
+            'kneighborsclassifier__n_neighbors': np.arange(start=1, stop=MAX_N_COMPONENTS, step=5),
             'kneighborsclassifier__algorithm': ['auto', 'ball_tree', 'brute'],
             'kneighborsclassifier__leaf_size': np.arange(start=1, stop=500, step=5),
             'kneighborsclassifier__p': [2],
             'kneighborsclassifier__metric': ['minkowski'],
             'kneighborsclassifier__weights': ['uniform', 'distance']
         })
-
-        # WARNING! isinstance(extra_trees_c_instance, DecisionTreeClassifier) -> True
+    # WARNING! isinstance(extra_trees_c_instance, DecisionTreeClassifier) -> True
     if str(clf).__contains__('DecisionTreeClassifier'):
         criteria = ["gini", "entropy"]
         splitter_list = ["best", "random"]
@@ -1177,7 +1172,6 @@ def update_param_grid_big(clf, param_grid):
             'decisiontreeclassifier__class_weight': class_weights,
             'decisiontreeclassifier__ccp_alpha': [0.0, 0.2],
         })
-
     if str(clf).__contains__('ExtraTreeClassifier'):
         max_features = ["sqrt", "log2", np.random.uniform(0.01, 0.99), None]
         criteria = ["gini", "entropy"]
@@ -1200,7 +1194,6 @@ def update_param_grid_big(clf, param_grid):
             'extratreeclassifier__class_weight': class_weights,
             'extratreeclassifier__ccp_alpha': [0.0, 0.2],
         })
-
     if isinstance(clf, RandomForestClassifier):
         max_features = ["sqrt", "log2", np.random.uniform(0.01, 0.99), None]
         criteria = ["gini", "entropy"]
@@ -1232,7 +1225,6 @@ def update_param_grid_big(clf, param_grid):
             #         to train each base estimator.
             'randomforestclassifier__max_samples': [None, 20],
         })
-
     if isinstance(clf, GradientBoostingClassifier):
         # "criterion='mae' was deprecated in version 0.24. Use `criterion='squared_error'` which is equivalent.
         criteria = ['friedman_mse', 'squared_error']
@@ -1261,7 +1253,6 @@ def update_param_grid_big(clf, param_grid):
             'gradientboostingclassifier__tol': [1e-5, 1e-3],
             'gradientboostingclassifier__ccp_alpha': [0.0, 0.2]
         })
-
     if isinstance(clf, LogisticRegression):
         param_grid.update({'logisticregression__max_iter': [100, 10000],
                            'logisticregression__tol': [0.001, 0.2],
@@ -1278,7 +1269,6 @@ def update_param_grid_big(clf, param_grid):
                            'logisticregression__C': [1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10.],
                            'logisticregression__dual': [False]
                            })
-
     if isinstance(clf, GaussianProcessClassifier):
         param_grid.update({
             'gaussianprocessclassifier__optimizer': [0.1, 1.0],
@@ -1291,7 +1281,6 @@ def update_param_grid_big(clf, param_grid):
 
         params = {'random_state': 13,
                   'max_iter_predict': random.randint(1, 200), 'n_restarts_optimizer': random.randint(0, 20)}
-
     if isinstance(clf, PassiveAggressiveClassifier):
         param_grid.update({
             'passiveaggressiveclassifier__C': [0.1, 1.0],
@@ -1305,7 +1294,6 @@ def update_param_grid_big(clf, param_grid):
             'passiveaggressiveclassifier__random_state': [RANDOM_STATE],
             'passiveaggressiveclassifier__average': [False, True]
         })
-
     if isinstance(clf, RidgeClassifier):
         # Current sag implementation does not handle the case step_size * alpha_scaled == 1
         param_grid.update({
@@ -1318,7 +1306,6 @@ def update_param_grid_big(clf, param_grid):
             'ridgeclassifier__solver': ['svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag', 'saga'],
             'ridgeclassifier__random_state': [RANDOM_STATE]
         })
-
     if isinstance(clf, SGDClassifier):
         param_grid.update({
             'sgdclassifier__loss': ['hinge', 'log', 'modified_huber',
@@ -1342,7 +1329,6 @@ def update_param_grid_big(clf, param_grid):
             'sgdclassifier__average': [False, True],
             'sgdclassifier__random_state': [RANDOM_STATE]
         })
-
     if isinstance(clf, AdaBoostClassifier):
         param_grid.update({
             'adaboostclassifier__n_estimators': [50, 500, 1000],
@@ -1360,7 +1346,6 @@ def update_param_grid_big(clf, param_grid):
             'baggingclassifier__max_features': [1.0, 0.5, 0.2],
             'baggingclassifier__random_state': [RANDOM_STATE]
         })
-
     if isinstance(clf, LinearDiscriminantAnalysis):
         param_grid.update({
             'lineardiscriminantanalysis__solver': ['svd', 'lsqr'],  # 'eigen' causes trouble
@@ -1370,13 +1355,11 @@ def update_param_grid_big(clf, param_grid):
             'lineardiscriminantanalysis__store_covariance': [False, True],
             'lineardiscriminantanalysis__tol': [1e-6, 1e-2],
         })
-
     if isinstance(clf, NearestCentroid):
         param_grid.update({
             'nearestcentroid__metric': ['euclidean', 'manhattan'],
             'nearestcentroid__shrink_threshold': [None, 0.1, 0.2, 0.9]
         })
-
     if isinstance(clf, Perceptron):
         param_grid.update({
             'perceptron__penalty': ['l2', 'l1', 'elasticnet'],
@@ -1391,7 +1374,6 @@ def update_param_grid_big(clf, param_grid):
             'perceptron__validation_fraction': [0.1, 0.2],
             'perceptron__n_iter_no_change': [5, 20]
         })
-
     if isinstance(clf, MLPClassifier):
         layers_num = random.randint(1, 3)
         layers = []
@@ -1417,7 +1399,6 @@ def update_param_grid_big(clf, param_grid):
             'mlpclassifier__n_iter_no_change': [100],
             'mlpclassifier__max_fun': [15000, 30000]
         })
-
     if isinstance(clf, LinearSVC):
         #  Unsupported set of arguments:
         #  The combination of penalty='l1' and loss='squared_hinge'
@@ -1453,7 +1434,6 @@ def update_param_grid_big(clf, param_grid):
             'nusvc__break_ties': [False],
             'nusvc__random_state': [RANDOM_STATE],
         })
-
     if isinstance(clf, SVC):
         # O(n_samples^2 * n_features)
         # TODO - gamma, coef0
@@ -1465,7 +1445,6 @@ def update_param_grid_big(clf, param_grid):
             # precomputed requires the kernel matrix
             'svc__kernel': ['linear', 'poly', 'rbf', 'sigmoid']
         })
-
     if isinstance(clf, XGBClassifier):
         param_grid.update({
             # 'xgbclassifier__early_stopping_rounds': [2],
